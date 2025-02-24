@@ -402,11 +402,15 @@ def ritira_ticket():
     db.close()
     return render_template("ritira_ticket.html", reparti=reparti)
 
-@app.route("/visualizza_ticket/<reparto_nome>/<int:ticket_number>")
-def visualizza_ticket(reparto_nome, ticket_number):
-    """Visualizza il ticket su una nuova pagina."""
-    print(f"DEBUG: reparto_nome={reparto_nome}, ticket_number={ticket_number}")
+@app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
+def visualizza_ticket(reparto_id, ticket_number):
+    db = Database()
     
+    # Recupera il nome del reparto
+    reparto = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+    reparto_nome = reparto[0][0] if reparto else "Sconosciuto"
+
+    db.close()
     return render_template("visualizza_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
 @app.route("/ticket_chiamato")
@@ -427,12 +431,25 @@ def ticket_chiamato():
     db.close()
     return render_template("ticket_chiamato.html", reparti=reparti, numeri_chiamati=numeri_chiamati_dict)
 
+
 @app.route("/aggiorna_ticket", methods=["POST"])
 def aggiorna_ticket():
     db = Database()
-    numeri_chiamati = dict(db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto"))
+    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
+
+    numeri_formattati = {}
+    for reparto_id, numero in numeri_chiamati:
+        reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+        if reparto_nome_result:
+            reparto_nome = reparto_nome_result[0][0]
+            numeri_formattati[reparto_nome] = numero  # Usa il nome del reparto come chiave
+
+            # **Invia il segnale specifico per il reparto**
+            socketio.emit(f"update_ticket_{reparto_nome}", numero)
+
     db.close()
-    socketio.emit("update_tickets", numeri_chiamati)
+    print("📢 INVIO AGGIORNAMENTO CORRETTO:", numeri_formattati)  # Debug importante
+    socketio.emit("update_tickets", numeri_formattati)
     return "OK", 200
 
 @app.route("/gestione_ticket", methods=["GET", "POST"])
@@ -465,6 +482,31 @@ def gestione_ticket():
     db.close()
     return render_template("gestione_ticket.html", reparti=reparti, numeri_ticket=numeri_ticket)
 
+@app.route("/visualizza_ticket_qr")
+def visualizza_ticket_qr():
+    return render_template("visualizza_ticket_qr.html")
+
+@app.route("/ritira_ticket_qr", methods=["GET", "POST"])
+def ritira_ticket_qr():
+    db = Database()
+    reparti = db.execute_query("SELECT id, nome FROM reparti")
+
+    if request.method == "POST":
+        reparto_id = request.form.get("reparto")
+        if reparto_id:
+            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+            ticket_number = (result[0][0] + 1) if result else 1
+
+            db.execute_query(
+                "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
+                (ticket_number, reparto_id), commit=True
+            )
+
+            db.close()
+            return redirect(f"/visualizza_ticket/{reparto_id}/{ticket_number}")
+
+    db.close()
+    return render_template("ritira_ticket_qr.html", reparti=reparti)
 
 
 
