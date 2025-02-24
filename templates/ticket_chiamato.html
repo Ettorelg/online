@@ -5,63 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticket Chiamato</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             margin: 0;
             padding: 0;
             background-color: #000;
             color: white;
-        }
-        .container {
-            width: 100%;
+            display: flex;
             height: 100vh;
+        }
+        .left-section, .right-section {
+            flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            padding: 20px;
+        }
+        .left-section {
+            background-color: #222;
+            border-right: 2px solid #ffcc00;
+        }
+        .right-section {
+            background-color: #000;
+        }
+        .qrcode-container {
+            text-align: center;
+        }
+        .qrcode {
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px;
         }
         .reparto-container {
             background: rgba(255, 255, 255, 0.1);
             padding: 20px;
-            margin: 20px;
+            margin: 10px;
             border-radius: 10px;
             text-align: center;
             width: 80%;
-            max-width: 600px;
+            max-width: 400px;
         }
         .reparto-nome {
-            font-size: 40px;
+            font-size: 30px;
             font-weight: bold;
             color: #ffcc00;
             text-transform: uppercase;
         }
         .ticket-number {
-            font-size: 100px;
+            font-size: 80px;
             font-weight: bold;
             padding: 20px;
             background-color: #ffcc00;
             color: black;
             border-radius: 10px;
             display: inline-block;
-            width: 220px;
+            width: 180px;
             text-align: center;
-            transition: transform 0.6s ease-in-out, background-color 0.6s;
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
         }
         .highlight {
-            transform: scale(1.3);
-            background-color: #ff3300;
+            animation: pulse 1s infinite alternate;
         }
-        .voice-test {
-            margin-top: 20px;
-            font-size: 18px;
-            padding: 10px 20px;
-            cursor: pointer;
-            background: #007bff;
-            color: white;
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                background-color: #ffcc00;
+            }
+            to {
+                transform: scale(1.2);
+                background-color: #ff3300;
+            }
+        }
+		.voice-test {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
             border: none;
-            border-radius: 5px;
+            cursor: pointer;
         }
     </style>
     <script>
@@ -92,33 +117,17 @@
         }
 
         function announceNumber(number, reparto) {
-            var msg = new SpeechSynthesisUtterance("Numero " + number + " per " + reparto);
+            var msg = new SpeechSynthesisUtterance("Numero " + number);
             msg.voice = selectedVoice;
-            msg.rate = 0.9;
-            msg.pitch = 1.2;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
             window.speechSynthesis.speak(msg);
         }
 
         function highlightNumber(element) {
-            let repeatCount = 3; // Numero di ripetizioni dell'animazione
-            let currentCount = 0;
-
-            function animate() {
-                if (currentCount < repeatCount) {
-                    element.classList.add("highlight");
-                    setTimeout(() => {
-                        element.classList.remove("highlight");
-                        currentCount++;
-                        setTimeout(animate, 300); // Pausa tra una transizione e l'altra
-                    }, 300);
-                }
-            }
-
-            animate();
+            element.classList.add("highlight");
+            setTimeout(() => element.classList.remove("highlight"), 5000);
         }
-
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        setTimeout(loadVoices, 500);
 
         socket.on("update_tickets", function(numeri) {
             for (var reparto in numeri) {
@@ -135,7 +144,24 @@
             }
         });
 
-        function testVoice() {
+        function generateQRCode(reparto) {
+            var qrcodeElement = document.getElementById("qrcode-" + reparto);
+            qrcodeElement.innerHTML = "";
+            new QRCode(qrcodeElement, {
+                text: window.location.origin + "/ritira_ticket_qr",
+                width: 150,
+                height: 150
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            setTimeout(loadVoices, 500);
+            {% for reparto in reparti %}
+                generateQRCode("{{ reparto[0] }}");
+            {% endfor %}
+        });
+		function testVoice() {
             var msg = new SpeechSynthesisUtterance("Audio attivato");
             msg.voice = selectedVoice;
             msg.rate = 0.6;
@@ -146,7 +172,16 @@
 </head>
 <body>
 
-    <div class="container">
+    <div class="left-section">
+        <h2>📷 Scansiona il QR Code per ritirare un ticket</h2>
+        <div class="qrcode-container">
+            {% for reparto in reparti %}
+            <div class="qrcode" id="qrcode-{{ reparto[0] }}"></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="right-section">
         <h1>🔔 Ticket Chiamati 🔔</h1>
 
         {% for reparto in reparti %}
@@ -157,8 +192,8 @@
             </div>
         </div>
         {% endfor %}
-
-        <button class="voice-test" onclick="testVoice()">🔊 Test Voce</button>
+		<button class="voice-test" onclick="testVoice()">🔊 Test Voce</button>
+    
     </div>
 
 </body>

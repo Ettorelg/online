@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ritira Ticket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .ticket-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .ticket-title {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ticket-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+            width: 100%;
+        }
+        .ticket-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ticket-container">
+        <h1 class="ticket-title">🎟 Ritira il tuo Ticket</h1>
+        <div class="button-container">
+            {% for reparto in reparti %}
+            <form method="POST">
+                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
+                <button type="submit" class="ticket-button">{{ reparto[1] }}</button>
+            </form>
+            {% endfor %}
+        </div>
+    </div>
+
+</body>
+</html>

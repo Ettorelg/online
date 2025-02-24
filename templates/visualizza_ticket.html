@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Il tuo Ticket</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -43,19 +44,20 @@
             border-radius: 8px;
             display: inline-block;
             width: 120px;
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
         }
-        .dashboard-link {
-            display: inline-block;
-            margin-top: 20px;
-            font-size: 16px;
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
+        .highlight {
+            animation: pulse 0.5s alternate 4;
         }
-        .dashboard-link:hover {
-            background: #0056b3;
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                background-color: #ffcc00;
+            }
+            to {
+                transform: scale(1.2);
+                background-color: #ff3300;
+            }
         }
     </style>
 </head>
@@ -63,11 +65,55 @@
 
     <div class="ticket-container">
         <div class="ticket-title">TICKET</div>
-        <div class="ticket-info">Reparto: <strong>{{ reparto_nome }}</strong></div>
-        <div class="ticket-number">{{ ticket_number }}</div>
+        <div class="ticket-info">Reparto: <strong id="reparto-nome">{{ reparto_nome }}</strong></div>
+        <div class="ticket-number" id="ticket-number">{{ ticket_number }}</div>
         <div class="ticket-info">-------------------</div>
-        <a href="/dashboard_user" class="dashboard-link">Torna alla Dashboard</a>
     </div>
+
+    <audio id="beep-sound">
+    <source src="/static/ding-126626.mp3" type="audio/wav">
+	</audio>
+
+    <script>
+        var socket = io();
+        var ticketElement = document.getElementById("ticket-number");
+        var repartoNome = document.getElementById("reparto-nome").innerText.trim();
+
+        console.log("🟢 WebSocket Connesso - Reparto:", repartoNome);
+
+        // **Ascolta SOLO per il suo specifico reparto**
+        socket.on("update_ticket_" + repartoNome, function(nuovoNumero) {
+            console.log("🔔 AGGIORNAMENTO SPECIFICO PER:", repartoNome, "Nuovo Numero:", nuovoNumero);
+
+            if (parseInt(ticketElement.textContent) !== nuovoNumero) {
+                console.log("✅ NUMERO CAMBIATO - AVVIO ANIMAZIONE E AUDIO");
+
+                // **FORZA IL CAMBIAMENTO DEL NUMERO**
+                ticketElement.textContent = nuovoNumero;
+
+                // **ATTIVA L'ANIMAZIONE**
+                highlightNumber(ticketElement);
+
+                // **FA PARTIRE IL BEEP**
+                playBeep();
+            }
+        });
+
+        function highlightNumber(element) {
+            console.log("💡 ANIMAZIONE ATTIVATA PER:", element.textContent);
+            element.classList.add("highlight");
+            setTimeout(() => element.classList.remove("highlight"), 2000);
+        }
+
+        function playBeep() {
+            var beep = document.getElementById("beep-sound");
+            beep.play().then(() => {
+                console.log("🔊 Beep riprodotto con successo");
+            }).catch(e => {
+                console.log("🔇 ERRORE AUDIO:", e);
+            });
+        }
+    </script>
 
 </body>
 </html>
