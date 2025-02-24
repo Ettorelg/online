@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stampa Ticket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .ticket-container {
+            width: 300px;
+            margin: auto;
+            padding: 20px;
+            border: 2px solid #000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .ticket-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .ticket-info {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .ticket-number {
+            font-size: 40px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .print-button {
+            margin-top: 20px;
+            font-size: 16px;
+            padding: 10px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body onload="window.print();">
+
+    <div class="ticket-container">
+        <div class="ticket-title">TICKET</div>
+        <div class="ticket-info">Reparto: <strong>{{ reparto_nome }}</strong></div>
+        <div class="ticket-number">{{ ticket_number }}</div>
+        <div class="ticket-info">-------------------</div>
+        <button class="print-button" onclick="window.print();">Stampa</button>
+        <br><br>
+        <a href="/dashboard_user">Torna alla Dashboard</a>
+    </div>
+
+</body>
+</html>

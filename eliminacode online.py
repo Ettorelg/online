@@ -30,12 +30,8 @@ class Database:
         result = self.execute_query(query, (user_id,))
         return {row[0]: row[1] for row in result}
 
-    def crea_tabelle():
-        """Crea le tabelle necessarie nel database PostgreSQL."""
-        conn = psycopg2.connect("postgres://postgres:ukhOvjJOEWKeSFdAewMFfzoKzCvGqhTT@gondola.proxy.rlwy.net:42614/railway")
-        cursor = conn.cursor()
-
-        cursor.execute('''
+    def crea_tabelle(self):
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS utenti (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
@@ -51,7 +47,8 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        # Modificato per includere ON DELETE CASCADE
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS licenze (
                 id SERIAL PRIMARY KEY,
                 id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
@@ -60,7 +57,7 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
@@ -68,15 +65,14 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS file_reparto (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
                 id_reparto INTEGER REFERENCES reparti(id) ON DELETE CASCADE
             )
         ''')
-
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS ticket_reparto (
                 id_reparto INTEGER PRIMARY KEY,
                 numero_attuale INTEGER DEFAULT 0,
@@ -85,7 +81,7 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS categorie (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
@@ -93,7 +89,7 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS prodotti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
@@ -103,7 +99,7 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS dipendenti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
@@ -112,7 +108,7 @@ class Database:
             )
         ''')
 
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS calendario (
                 id SERIAL PRIMARY KEY,
                 id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
@@ -122,12 +118,8 @@ class Database:
             )
         ''')
 
-        conn.commit()
-        cursor.close()
-        conn.close()
 
-    if __name__ == "__main__":
-        crea_tabelle()
+        self.conn.commit()
 
     def close(self):
         self.cursor.close()
@@ -155,7 +147,7 @@ def login():
             session["username"] = username
             session["is_admin"] = is_admin
             db.close()
-            return redirect("/dashboard_admin") if is_admin else redirect("/dashboard_utente")
+            return redirect("/dashboard_admin") if is_admin else redirect("/dashboard_user")
         else:
             db.close()
             return "Login fallito! Username o password errati."
@@ -189,24 +181,14 @@ def dashboard_admin():
 def dashboard_user():
     if "user_id" not in session:
         return redirect("/login")
-
+    
     user_id = session["user_id"]
-
-    # Connessione al database locale SQLite
-    conn = sqlite3.connect("local.db")
-    cursor = conn.cursor()
-
-    # Recupera tutte le licenze attive
-    cursor.execute("SELECT tipo, data_scadenza FROM licenze WHERE id_utente = ?", (user_id,))
-    licenze = cursor.fetchall()
-
-    # Controlla se l'utente ha la licenza "eliminacode"
+    db = Database()
+    licenze = db.execute_query("SELECT tipo, data_scadenza FROM licenze WHERE id_utente = %s", (user_id,))
     eliminacode_attiva = any(licenza[0] == "eliminacode" for licenza in licenze)
-
-    conn.close()
-
+    db.close()
+    
     return render_template("dashboard_user.html", username=session["username"], licenze=licenze, eliminacode_attiva=eliminacode_attiva)
-
 
 @app.route("/aggiungi_utente", methods=["GET", "POST"])
 def aggiungi_utente():
@@ -380,70 +362,51 @@ def gestisci_licenze(user_id):
                            licenze_attuali=licenze_attuali, reparti=reparti, file_reparto=file_reparto)
 
 
-
-
-
-
-
-
-
 @app.route("/ritira_ticket", methods=["GET", "POST"])
 def ritira_ticket():
     if "user_id" not in session:
         return redirect("/login")
-
-    conn = sqlite3.connect("local.db", timeout=10)  # Impostiamo il timeout
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    
+    user_id = session["user_id"]
+    db = Database()
+    reparti = db.execute_query("""
         SELECT DISTINCT r.id, r.nome 
         FROM reparti r
         INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = ? 
+        WHERE l.id_utente = %s 
           AND l.tipo = 'eliminacode'
-          AND l.data_scadenza >= DATE('now')
-    """, (session["user_id"],))
-    reparti = cursor.fetchall()
+          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+    """, (user_id,))
 
+    if reparti is None:
+        reparti = []
+    
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
         reparto_nome = request.form.get("reparto_nome")
 
         if reparto_id and reparto_nome:
-            try:
-                cursor.execute("BEGIN IMMEDIATE")  # 🔄 Lock immediato per evitare deadlock
-                
-                # **Verifica se il reparto esiste in `ticket_reparto`**
-                cursor.execute("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = ?", (reparto_id,))
-                result = cursor.fetchone()
-
-                if result is None:
-                    # **Se il reparto non esiste, lo inseriamo**
-                    cursor.execute("INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo) VALUES (?, 0, 1)", (reparto_id,))
-                    ticket_number = 1
-                else:
-                    # **Se il reparto esiste, aggiorniamo il ticket**
-                    cursor.execute("UPDATE ticket_reparto SET numero_massimo = numero_massimo + 1 WHERE id_reparto = ?", (reparto_id,))
-                    cursor.execute("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = ?", (reparto_id,))
-                    ticket_number = cursor.fetchone()[0]
-
-                conn.commit()  # ✅ Confermiamo la transazione
-                
-                return redirect(f"/visualizza_ticket/{reparto_nome}/{ticket_number}")
-
-            except sqlite3.OperationalError as e:
-                print(f"❌ Errore SQLite: {e}")
-                conn.rollback()  # 🔄 Annulliamo la transazione in caso di errore
-
-            finally:
-                conn.close()  # ✅ Chiudiamo la connessione sempre
-
-    conn.close()
+            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+            if not result:
+                ticket_number = 1
+                db.execute_query("""
+                    INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
+                    VALUES (%s, 0, %s)
+                """, (reparto_id, ticket_number), commit=True)
+            else:
+                ticket_number = result[0][0] + 1
+                db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (ticket_number, reparto_id), commit=True)
+            db.close()
+            return redirect(f"/visualizza_ticket/{reparto_nome}/{ticket_number}")
+    
+    db.close()
     return render_template("ritira_ticket.html", reparti=reparti)
 
 @app.route("/visualizza_ticket/<reparto_nome>/<int:ticket_number>")
 def visualizza_ticket(reparto_nome, ticket_number):
     """Visualizza il ticket su una nuova pagina."""
+    print(f"DEBUG: reparto_nome={reparto_nome}, ticket_number={ticket_number}")
+    
     return render_template("visualizza_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
 @app.route("/ticket_chiamato")
@@ -453,56 +416,22 @@ def ticket_chiamato():
 
     db = Database()
     numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
+    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
+
+    # Recupera i nomi dei reparti
+    reparti = db.execute_query("SELECT id, nome FROM reparti")
+
+    print(f"DEBUG - Reparti: {reparti}")
+    print(f"DEBUG - Numeri chiamati: {numeri_chiamati_dict}")
+
     db.close()
-    return render_template("ticket_chiamato.html", numeri_chiamati=dict(numeri_chiamati))
-
-@app.route("/stampa_ticket/<reparto_nome>/<int:ticket_number>")
-def stampa_ticket(reparto_nome, ticket_number):
-    """Simula la stampa del ticket generando una pagina HTML."""
-    return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
-
-@app.route("/ticket_chiamato")
-def ticket_chiamato():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    conn = sqlite3.connect("local.db", timeout=10)
-    cursor = conn.cursor()
-
-    # Recupera solo i reparti dell'utente con licenza eliminacode attiva
-    cursor.execute("""
-        SELECT DISTINCT r.id, r.nome 
-        FROM reparti r
-        INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = ? 
-          AND l.tipo = 'eliminacode'
-          AND l.data_scadenza >= DATE('now')
-    """, (session["user_id"],))
-    reparti = cursor.fetchall()
-
-    numeri_chiamati = {}
-
-    cursor.execute("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    for row in cursor.fetchall():
-        numeri_chiamati[row[0]] = row[1]
-
-    conn.close()
-    return render_template("ticket_chiamato.html", reparti=reparti, numeri_chiamati=numeri_chiamati)
+    return render_template("ticket_chiamato.html", reparti=reparti, numeri_chiamati=numeri_chiamati_dict)
 
 @app.route("/aggiorna_ticket", methods=["POST"])
 def aggiorna_ticket():
-    """Quando un numero viene chiamato, aggiorna tutti i client in tempo reale."""
-    conn = sqlite3.connect("local.db")
-    cursor = conn.cursor()
-
-    numeri_chiamati = {}
-    cursor.execute("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    for row in cursor.fetchall():
-        numeri_chiamati[row[0]] = row[1]
-
-    conn.close()
-    
-    # Invia il numero aggiornato a tutti i client connessi
+    db = Database()
+    numeri_chiamati = dict(db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto"))
+    db.close()
     socketio.emit("update_tickets", numeri_chiamati)
     return "OK", 200
 
@@ -511,53 +440,37 @@ def gestione_ticket():
     if "user_id" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("local.db")
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id, nome FROM reparti")
-    reparti = cursor.fetchall()
-
-    numeri_ticket = {}
-    cursor.execute("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    for row in cursor.fetchall():
-        numeri_ticket[row[0]] = row[1]
+    db = Database()
+    reparti = db.execute_query("SELECT id, nome FROM reparti")
+    numeri_ticket = dict(db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto"))
 
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
         azione = request.form.get("azione")
 
         if reparto_id and azione:
-            cursor.execute("SELECT numero_attuale, numero_massimo FROM ticket_reparto WHERE id_reparto = ?", (reparto_id,))
-            data = cursor.fetchone()
-
-            if data:
-                numero_attuale, numero_massimo = data
-
+            result = db.execute_query("SELECT numero_attuale, numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+            if result:
+                numero_attuale, numero_massimo = result[0]
                 if azione == "avanti" and numero_attuale < numero_massimo:
-                    cursor.execute("UPDATE ticket_reparto SET numero_attuale = numero_attuale + 1 WHERE id_reparto = ?", (reparto_id,))
+                    db.execute_query("UPDATE ticket_reparto SET numero_attuale = numero_attuale + 1 WHERE id_reparto = %s", (reparto_id,), commit=True)
                 elif azione == "indietro" and numero_attuale > 0:
-                    cursor.execute("UPDATE ticket_reparto SET numero_attuale = numero_attuale - 1 WHERE id_reparto = ?", (reparto_id,))
+                    db.execute_query("UPDATE ticket_reparto SET numero_attuale = numero_attuale - 1 WHERE id_reparto = %s", (reparto_id,), commit=True)
                 elif azione == "reset":
-                    cursor.execute("UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = ?", (reparto_id,))
+                    db.execute_query("UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = %s", (reparto_id,), commit=True)
 
-                conn.commit()
-
-                # **RICARICA il numero aggiornato dopo la modifica**
-                cursor.execute("SELECT numero_attuale FROM ticket_reparto WHERE id_reparto = ?", (reparto_id,))
-                numero_attuale = cursor.fetchone()[0]
-
-                # **Invia l'aggiornamento a tutti i client in tempo reale**
-                socketio.emit("update_tickets", {reparto_id: numero_attuale})
-                print(f"🔄 WebSocket aggiornato per Reparto {reparto_id}: {numero_attuale}")
-
-    # Recupera i numeri aggiornati
-    numeri_ticket = {}
-    cursor.execute("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    for row in cursor.fetchall():
-        numeri_ticket[row[0]] = row[1]
-
-    conn.close()
+                numeri_ticket = dict(db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto"))
+                socketio.emit("update_tickets", numeri_ticket)
+    
+    db.close()
     return render_template("gestione_ticket.html", reparti=reparti, numeri_ticket=numeri_ticket)
 
+
+
+
+
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000)
+    db = Database()
+    db.crea_tabelle()
+    db.close()
+    app.run(host="0.0.0.0", port=5000)

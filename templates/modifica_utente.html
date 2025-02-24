@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifica Utente</title>
+</head>
+<body>
+    <h2>Modifica Utente</h2>
+    <form method="POST">
+        <label>Username:</label>
+        <input type="text" name="username" value="{{ user[0] }}" required><br>
+
+        <label>Password:</label>
+        <input type="text" name="password" value="{{ user[1] }}" required><br>
+
+        <label>Admin:</label>
+        <input type="checkbox" name="admin" {% if user[2] %}checked{% endif %}><br>
+
+        <label>Ragione Sociale:</label>
+        <input type="text" name="ragione_sociale" value="{{ user[3] }}"><br>
+
+        <label>Indirizzo:</label>
+        <input type="text" name="indirizzo" value="{{ user[4] }}"><br>
+
+        <label>Città:</label>
+        <input type="text" name="citta" value="{{ user[5] }}"><br>
+
+        <label>CAP:</label>
+        <input type="text" name="cap" value="{{ user[6] }}"><br>
+
+        <label>Partita IVA:</label>
+        <input type="text" name="partita_iva" value="{{ user[7] }}"><br>
+
+        <label>Telefono:</label>
+        <input type="text" name="telefono" value="{{ user[8] }}"><br>
+
+        <label>Email:</label>
+        <input type="email" name="email" value="{{ user[9] }}"><br>
+
+        <button type="submit">Salva Modifiche</button>
+    </form>
+    <br>
+    <a href="/dashboard_admin">Torna alla Dashboard</a>
+</body>
+</html>

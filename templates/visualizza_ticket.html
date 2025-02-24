@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Il tuo Ticket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .ticket-container {
+            width: 300px;
+            margin: auto;
+            padding: 20px;
+            border: 2px solid #000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            border-radius: 10px;
+        }
+        .ticket-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .ticket-info {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .ticket-number {
+            font-size: 60px;
+            font-weight: bold;
+            color: #000;
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f2f2f2;
+            border: 2px solid #000;
+            border-radius: 8px;
+            display: inline-block;
+            width: 120px;
+        }
+        .dashboard-link {
+            display: inline-block;
+            margin-top: 20px;
+            font-size: 16px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .dashboard-link:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ticket-container">
+        <div class="ticket-title">TICKET</div>
+        <div class="ticket-info">Reparto: <strong>{{ reparto_nome }}</strong></div>
+        <div class="ticket-number">{{ ticket_number }}</div>
+        <div class="ticket-info">-------------------</div>
+        <a href="/dashboard_user" class="dashboard-link">Torna alla Dashboard</a>
+    </div>
+
+</body>
+</html>

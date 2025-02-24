@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 20px;
+        }
+        .logout {
+            float: right;
+            text-decoration: none;
+            background: red;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+		.aggiungi {
+            float: left;
+            text-decoration: none;
+            background: blue;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        h2 {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+        
+    <h2>Dashboard Admin</h2>
+    
+    <h3>Gestione Utenti</h3>
+	
+    <a href="/aggiungi_utente"class="aggiungi">Aggiungi Utente</a> 
+	<a href="/logout" class="logout">Logout</a>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+				<th>Password</th>
+                <th>Admin</th>
+                <th>Ragione Sociale</th>
+                <th>Indirizzo</th>
+                <th>Città</th>
+                <th>CAP</th>
+                <th>Partita IVA</th>
+                <th>Telefono</th>
+                <th>Email</th>
+				<th>Licenze</th>
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for utente in utenti %}
+            <tr>
+                <td>{{ utente[0] }}</td>
+                <td>{{ utente[1] }}</td>
+				<td>{{ utente[2] }}</td>
+                <td>{{ utente[3] }}</td>
+                <td>{{ utente[4] }}</td>
+                <td>{{ utente[5] }}</td>
+                <td>{{ utente[6] }}</td>
+                <td>{{ utente[7] }}</td>
+                <td>{{ utente[8] }}</td>
+                <td>{{ utente[9] }}</td>
+                <td>{{ utente[10] }}</td>
+				<td>
+            {% if utente[0] in licenze %}
+                <ul>
+                    {% for tipo_licenza, data_scadenza in licenze[utente[0]] %}
+                        <li><strong>{{ tipo_licenza }}</strong> (Scadenza: {{ data_scadenza }})</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                Nessuna licenza attiva
+            {% endif %}
+        </td>
+                <td>
+                    <a href="/modifica_utente/{{ utente[0] }}">Modifica</a> 
+                    <a href="/cancella_utente/{{ utente[0] }}" onclick="return confirm('Sei sicuro di voler cancellare questo utente?');">Cancella</a>
+					<a href="/gestisci_licenze/{{ utente[0] }}">Gestisci Licenze</a>
+        
+				</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

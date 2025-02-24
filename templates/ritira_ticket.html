@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ritira Ticket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+        }
+        .reparto-container {
+            background: white;
+            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .reparto-nome {
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .button-container button {
+            font-size: 24px;
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background: #007bff;
+            color: white;
+            width: 100%;
+            max-width: 450px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Ritira il tuo Ticket</h2>
+
+    <div class="container">
+        {% for reparto in reparti %}
+        <div class="reparto-container">
+            <div class="reparto-nome">{{ reparto[1] }}</div>
+            <form method="POST">
+                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
+                <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
+                <div class="button-container">
+                    <button type="submit">Prendi Ticket</button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>

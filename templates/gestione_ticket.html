@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Ticket</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 90%;
+            margin: auto;
+        }
+        .reparto-container {
+            background: white;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .reparto-nome {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .ticket-number {
+            font-size: 40px;
+            font-weight: bold;
+            padding: 10px 15px;
+            background-color: #f2f2f2;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            display: inline-block;
+            width: 100px;
+            margin-bottom: 10px;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .button-container button {
+            font-size: 18px;
+            padding: 10px;
+            width: 100px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+        }
+        .btn-avanti { background: #28a745; }
+        .btn-indietro { background: #ffc107; }
+        .btn-reset { background: #dc3545; }
+
+        @media (max-width: 768px) {
+            .button-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            .button-container button {
+                width: 80%;
+                max-width: 200px;
+            }
+        }
+    </style>
+    <script>
+        var socket = io();
+
+        socket.on("update_tickets", function(numeri) {
+            for (var reparto in numeri) {
+                var ticketElement = document.getElementById("ticket-" + reparto);
+                if (ticketElement) {
+                    ticketElement.innerText = numeri[reparto];
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+
+    <h2>Gestione Ticket</h2>
+
+    <div class="container">
+        {% for reparto in reparti %}
+        <div class="reparto-container">
+            <div class="reparto-nome">{{ reparto[1] }}</div>
+            <div class="ticket-number" id="ticket-{{ reparto[0] }}">
+                {{ numeri_ticket[reparto[0]] if reparto[0] in numeri_ticket else 0 }}
+            </div>
+            <form method="POST">
+                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
+                <div class="button-container">
+                    <button type="submit" name="azione" value="avanti" class="btn-avanti">Avanti</button>
+                    <button type="submit" name="azione" value="indietro" class="btn-indietro">Indietro</button>
+                    <button type="submit" name="azione" value="reset" class="btn-reset">Reset</button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+
+    <br>
+    <a href="/dashboard_user">Torna alla Dashboard</a>
+
+</body>
+</html>
