@@ -154,13 +154,18 @@
             });
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            window.speechSynthesis.onvoiceschanged = loadVoices;
-            setTimeout(loadVoices, 500);
-            {% for reparto in reparti %}
-                generateQRCode("{{ reparto[0] }}");
-            {% endfor %}
-        });
+		document.addEventListener("DOMContentLoaded", function() {
+				// Genera un solo QR Code per ritirare il ticket
+				new QRCode(document.getElementById("qrcode"), {
+					text: window.location.origin + "/ritira_ticket_qr",
+					width: 150,
+					height: 150
+				});
+
+				// Carica le voci per la sintesi vocale
+				window.speechSynthesis.onvoiceschanged = loadVoices;
+				setTimeout(loadVoices, 500);
+			});
 		function testVoice() {
             var msg = new SpeechSynthesisUtterance("Audio attivato");
             msg.voice = selectedVoice;
@@ -172,14 +177,12 @@
 </head>
 <body>
 
-    <div class="left-section">
-        <h2>📷 Scansiona il QR Code per ritirare un ticket</h2>
-        <div class="qrcode-container">
-            {% for reparto in reparti %}
-            <div class="qrcode" id="qrcode-{{ reparto[0] }}"></div>
-            {% endfor %}
-        </div>
+<div class="left-section">
+    <h2>📷 Scansiona il QR Code per ritirare un ticket</h2>
+    <div class="qrcode-container">
+        <div class="qrcode" id="qrcode"></div>
     </div>
+</div>
 
     <div class="right-section">
         <h1>🔔 Ticket Chiamati 🔔</h1>
