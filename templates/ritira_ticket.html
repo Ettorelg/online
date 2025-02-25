@@ -48,8 +48,108 @@
             width: 100%;
             max-width: 450px;
         }
+				.ticket-popup {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: white;
+			padding: 20px;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+			border-radius: 10px;
+			text-align: center;
+			width: 300px;
+		}
+		.ticket-content {
+			font-family: Arial, sans-serif;
+		}
+		.ticket-number {
+			font-size: 50px;
+			font-weight: bold;
+			border: 2px solid #000;
+			padding: 10px;
+			margin-top: 10px;
+		}
     </style>
+	<script>
+		document.addEventListener("DOMContentLoaded", function() {
+			document.querySelectorAll(".ritira-ticket-form").forEach(form => {
+				form.addEventListener("submit", function(event) {
+					event.preventDefault(); // Evita il refresh della pagina
+
+					let formData = new FormData(this);
+					fetch("/ritira_ticket", {
+						method: "POST",
+						body: formData
+					})
+					.then(response => response.json())
+					.then(data => {
+						if (data.ticket_number && data.reparto_nome) {
+							// Mostra il ticket e stampa solo il popup
+							mostraTicket(data.reparto_nome, data.ticket_number);
+						} else {
+							alert("Errore nel ritiro del ticket");
+						}
+					})
+					.catch(error => console.error("Errore:", error));
+				});
+			});
+		});
+
+		function mostraTicket(repartoNome, ticketNumber) {
+			let ticketHtml = `
+				<div id="ticket-container" class="ticket-popup">
+					<div class="ticket-content">
+						<h2>TICKET</h2>
+						<p><strong>Reparto:</strong> ${repartoNome}</p>
+						<div class="ticket-number">${ticketNumber}</div>
+						<p>-------------------</p>
+					</div>
+				</div>
+			`;
+
+			// Crea un nuovo div per il popup
+			let ticketDiv = document.createElement("div");
+			ticketDiv.innerHTML = ticketHtml;
+			document.body.appendChild(ticketDiv);
+
+			// Stampa solo il popup
+			stampaSoloPopup(ticketDiv);
+
+			// Dopo la stampa, rimuove il ticket
+			setTimeout(() => {
+				document.body.removeChild(ticketDiv);
+			}, 1000);
+		}
+
+		function stampaSoloPopup(elemento) {
+			let win = window.open('', '', 'width=400,height=600');
+			win.document.write(`
+				<html>
+				<head>
+					<title>Stampa Ticket</title>
+					<style>
+						body { font-family: Arial, sans-serif; text-align: center; }
+						.ticket-content { padding: 20px; border: 2px solid #000; border-radius: 10px; }
+						.ticket-number { font-size: 50px; font-weight: bold; margin-top: 10px; }
+					</style>
+				</head>
+				<body>
+					${elemento.innerHTML}
+				</body>
+				</html>
+			`);
+			win.document.close();
+			win.print();
+			win.close();
+		}
+	</script>
+
+
+
+
 </head>
+
 <body>
 
     <h2>Ritira il tuo Ticket</h2>
@@ -58,13 +158,15 @@
         {% for reparto in reparti %}
         <div class="reparto-container">
             <div class="reparto-nome">{{ reparto[1] }}</div>
-            <form method="POST">
-                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
-                <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
-                <div class="button-container">
-                    <button type="submit">Prendi Ticket</button>
-                </div>
-            </form>
+            <form class="ritira-ticket-form">
+				<input type="hidden" name="reparto" value="{{ reparto[0] }}">
+				<input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
+				<div class="button-container">
+					<button type="submit">Prendi Ticket</button>
+				</div>
+			</form>
+
+
         </div>
         {% endfor %}
     </div>

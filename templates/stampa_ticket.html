@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stampa Ticket</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,44 +20,56 @@
             border: 2px solid #000;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             text-align: center;
+            border-radius: 10px;
         }
         .ticket-title {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: bold;
             margin-bottom: 10px;
+            color: #333;
         }
         .ticket-info {
-            font-size: 16px;
+            font-size: 18px;
             margin-bottom: 5px;
+            color: #555;
         }
         .ticket-number {
-            font-size: 40px;
+            font-size: 60px;
             font-weight: bold;
-            margin: 10px 0;
+            color: #000;
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f2f2f2;
+            border: 2px solid #000;
+            border-radius: 8px;
+            display: inline-block;
+            width: 120px;
         }
         .print-button {
-            margin-top: 20px;
-            font-size: 16px;
-            padding: 10px;
-            cursor: pointer;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
+            display: none; /* Nasconde il pulsante di stampa manuale */
+        }
+        @media print {
+            .print-button {
+                display: none;
+            }
         }
     </style>
 </head>
-<body onload="window.print();">
-
+<body>
     <div class="ticket-container">
         <div class="ticket-title">TICKET</div>
-        <div class="ticket-info">Reparto: <strong>{{ reparto_nome }}</strong></div>
-        <div class="ticket-number">{{ ticket_number }}</div>
+        <div class="ticket-info">Reparto: <strong id="reparto-nome">{{ reparto_nome }}</strong></div>
+        <div class="ticket-number" id="ticket-number">{{ ticket_number }}</div>
         <div class="ticket-info">-------------------</div>
-        <button class="print-button" onclick="window.print();">Stampa</button>
-        <br><br>
-        <a href="/dashboard_user">Torna alla Dashboard</a>
     </div>
-
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var repartoNome = "{{ reparto_nome }}";
+            var ticketNumber = "{{ ticket_number }}";
+            console.log("🔍 Controllo parametri: Reparto -", repartoNome, ", Numero -", ticketNumber);
+            window.print(); // Stampa automaticamente il ticket
+        });
+    </script>
 </body>
 </html>

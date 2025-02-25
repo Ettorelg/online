@@ -1,7 +1,8 @@
 import psycopg2
-from flask import Flask, render_template, request, redirect, session
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
+from flask import Flask, render_template, request, redirect, session, jsonify
+
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -361,57 +362,62 @@ def gestisci_licenze(user_id):
     return render_template("gestisci_licenze.html", user_id=user_id, licenze_disponibili=licenze_disponibili,
                            licenze_attuali=licenze_attuali, reparti=reparti, file_reparto=file_reparto)
 
-
 @app.route("/ritira_ticket", methods=["GET", "POST"])
 def ritira_ticket():
     if "user_id" not in session:
-        return redirect("/login")
-    
-    user_id = session["user_id"]
+        return jsonify({"error": "Non autenticato"}), 401
+
+    if request.method == "GET":
+        db = Database()
+        reparti = db.execute_query("""
+            SELECT DISTINCT r.id, r.nome 
+            FROM reparti r
+            INNER JOIN licenze l ON r.id_licenza = l.id
+            WHERE l.id_utente = %s 
+              AND l.tipo = 'eliminacode'
+              AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+        """, (session["user_id"],))
+        db.close()
+        return render_template("ritira_ticket.html", reparti=reparti)
+
+    # Se il metodo è POST, genera il ticket
+    reparto_id = request.form.get("reparto")
+    reparto_nome = request.form.get("reparto_nome")
+
+    if not reparto_id or not reparto_nome:
+        return jsonify({"error": "Dati mancanti"}), 400
+
     db = Database()
-    reparti = db.execute_query("""
-        SELECT DISTINCT r.id, r.nome 
-        FROM reparti r
-        INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = %s 
-          AND l.tipo = 'eliminacode'
-          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
-    """, (user_id,))
+    result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
 
-    if reparti is None:
-        reparti = []
-    
-    if request.method == "POST":
-        reparto_id = request.form.get("reparto")
-        reparto_nome = request.form.get("reparto_nome")
+    if not result:
+        ticket_number = 1
+        db.execute_query("""
+            INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
+            VALUES (%s, 0, %s)
+        """, (reparto_id, ticket_number), commit=True)
+    else:
+        ticket_number = result[0][0] + 1
+        db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
+                         (ticket_number, reparto_id), commit=True)
 
-        if reparto_id and reparto_nome:
-            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
-            if not result:
-                ticket_number = 1
-                db.execute_query("""
-                    INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
-                    VALUES (%s, 0, %s)
-                """, (reparto_id, ticket_number), commit=True)
-            else:
-                ticket_number = result[0][0] + 1
-                db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (ticket_number, reparto_id), commit=True)
-            db.close()
-            return redirect(f"/visualizza_ticket/{reparto_nome}/{ticket_number}")
-    
     db.close()
-    return render_template("ritira_ticket.html", reparti=reparti)
+
+    return jsonify({
+        "ticket_number": ticket_number,
+        "reparto_nome": reparto_nome
+    })
 
 @app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
 def visualizza_ticket(reparto_id, ticket_number):
     db = Database()
-    
+
     # Recupera il nome del reparto
-    reparto = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
-    reparto_nome = reparto[0][0] if reparto else "Sconosciuto"
+    reparto_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+    reparto_nome = reparto_result[0][0] if reparto_result else "Sconosciuto"
 
     db.close()
-    return render_template("visualizza_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
+    return render_template("visualizza_ticket.html", reparto_id=reparto_id, reparto_nome=reparto_nome, ticket_number=ticket_number)
 
 @app.route("/ticket_chiamato")
 def ticket_chiamato():
@@ -508,6 +514,10 @@ def ritira_ticket_qr():
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti)
 
+@app.route("/stampa_ticket/<reparto_nome>/<int:ticket_number>")
+def stampa_ticket(reparto_nome, ticket_number):
+    """Simula la stampa del ticket generando una pagina HTML."""
+    return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
 
 
