@@ -8,8 +8,8 @@ app.secret_key = "supersecretkey"
 socketio = SocketIO(app)
 
 # Configurazione Database Online
-DATABASE_URL = "postgresql://postgres:ukhOvjJOEWKeSFdAewMFfzoKzCvGqhTT@gondola.proxy.rlwy.net:42614/railway"
 
+DATABASE_URL = "postgres://postgres:LrPuARcRABMibMgWZcjQnNlPZXypfwky@hopper.proxy.rlwy.net:31053/railway"
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
