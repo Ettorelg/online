@@ -62,6 +62,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
+                IP_ADDRESS TEXT,
                 id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
             )
         ''')
@@ -118,6 +119,15 @@ class Database:
                 data_ora TIMESTAMP NOT NULL
             )
         ''')
+        
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS immagini_utenti (
+                id SERIAL PRIMARY KEY,
+                id_utente INTEGER REFERENCES utenti(id) ON DELETE CASCADE,
+                immagine_url TEXT NOT NULL
+            )
+        ''')
+        
 
 
         self.conn.commit()
@@ -365,48 +375,47 @@ def gestisci_licenze(user_id):
 @app.route("/ritira_ticket", methods=["GET", "POST"])
 def ritira_ticket():
     if "user_id" not in session:
-        return jsonify({"error": "Non autenticato"}), 401
-
-    if request.method == "GET":
-        db = Database()
-        reparti = db.execute_query("""
-            SELECT DISTINCT r.id, r.nome 
-            FROM reparti r
-            INNER JOIN licenze l ON r.id_licenza = l.id
-            WHERE l.id_utente = %s 
-              AND l.tipo = 'eliminacode'
-              AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
-        """, (session["user_id"],))
-        db.close()
-        return render_template("ritira_ticket.html", reparti=reparti)
-
-    # Se il metodo è POST, genera il ticket
-    reparto_id = request.form.get("reparto")
-    reparto_nome = request.form.get("reparto_nome")
-
-    if not reparto_id or not reparto_nome:
-        return jsonify({"error": "Dati mancanti"}), 400
-
+        return redirect("/login")
+    
+    user_id = session["user_id"]
     db = Database()
-    result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
+    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
 
-    if not result:
-        ticket_number = 1
-        db.execute_query("""
-            INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
-            VALUES (%s, 0, %s)
-        """, (reparto_id, ticket_number), commit=True)
-    else:
-        ticket_number = result[0][0] + 1
-        db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
-                         (ticket_number, reparto_id), commit=True)
+    reparti = db.execute_query("""
+        SELECT DISTINCT r.id, r.nome 
+        FROM reparti r
+        INNER JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s  -- Filtra solo i reparti associati all'utente
+          AND l.tipo = 'eliminacode'
+          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+    """, (user_id,))
 
+    if reparti is None:
+        reparti = []
+    
+    if request.method == "POST":
+        reparto_id = request.form.get("reparto")
+        reparto_nome = request.form.get("reparto_nome")
+
+        if reparto_id and reparto_nome:
+            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+            if not result:
+                ticket_number = 1
+                db.execute_query("""
+                    INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
+                    VALUES (%s, 0, %s)
+                """, (reparto_id, ticket_number), commit=True)
+            else:
+                ticket_number = result[0][0] + 1
+                db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (ticket_number, reparto_id), commit=True)
+            db.close()
+            
+            # Genera il ticket direttamente per la stampa
+            return jsonify({"ticket_number": ticket_number, "reparto_nome": reparto_nome})
+    
     db.close()
-
-    return jsonify({
-        "ticket_number": ticket_number,
-        "reparto_nome": reparto_nome
-    })
+    return render_template("ritira_ticket.html", reparti=reparti)
 
 @app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
 def visualizza_ticket(reparto_id, ticket_number):
@@ -424,18 +433,30 @@ def ticket_chiamato():
     if "user_id" not in session:
         return redirect("/login")
 
+    user_id = session["user_id"]
     db = Database()
+
     numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
     numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
 
-    # Recupera i nomi dei reparti
-    reparti = db.execute_query("SELECT id, nome FROM reparti")
+    reparti = db.execute_query("""
+        SELECT DISTINCT r.id, r.nome
+        FROM reparti r
+        INNER JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s
+          AND l.tipo = 'eliminacode'
+          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+    """, (user_id,))
 
-    print(f"DEBUG - Reparti: {reparti}")
-    print(f"DEBUG - Numeri chiamati: {numeri_chiamati_dict}")
+    # Recupera tutte le immagini dell'utente
+    immagini = db.execute_query("""
+        SELECT immagine_url FROM immagini_utenti WHERE id_utente = %s
+    """, (user_id,))
+    
+    immagini_list = [row[0] for row in immagini] if immagini else []
 
     db.close()
-    return render_template("ticket_chiamato.html", reparti=reparti, numeri_chiamati=numeri_chiamati_dict)
+    return render_template("ticket_chiamato.html", reparti=reparti, numeri_chiamati=numeri_chiamati_dict, immagini=immagini_list)
 
 
 @app.route("/aggiorna_ticket", methods=["POST"])
@@ -458,33 +479,71 @@ def aggiorna_ticket():
     socketio.emit("update_tickets", numeri_formattati)
     return "OK", 200
 
+
 @app.route("/gestione_ticket", methods=["GET", "POST"])
 def gestione_ticket():
     if "user_id" not in session:
         return redirect("/login")
 
+    user_id = session["user_id"]
     db = Database()
-    reparti = db.execute_query("SELECT id, nome FROM reparti")
-    numeri_ticket = dict(db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto"))
+
+    # Recupera i reparti associati all'utente
+    reparti = db.execute_query("""
+        SELECT DISTINCT r.id, r.nome 
+        FROM reparti r
+        INNER JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s 
+          AND l.tipo = 'eliminacode'
+          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+    """, (user_id,))
+
+    # Mappatura reparti -> numeri ticket
+    numeri_ticket = {}
+    reparti_ids = [row[0] for row in reparti]
+    
+    if reparti_ids:
+        placeholders = ', '.join(['%s'] * len(reparti_ids))  # Evita SQL Injection
+        numeri_ticket_query = f"""
+            SELECT id_reparto, numero_attuale 
+            FROM ticket_reparto 
+            WHERE id_reparto IN ({placeholders})
+        """
+        numeri_ticket = dict(db.execute_query(numeri_ticket_query, reparti_ids))
 
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
         azione = request.form.get("azione")
 
-        if reparto_id and azione:
-            result = db.execute_query("SELECT numero_attuale, numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+        if reparto_id and azione and int(reparto_id) in reparti_ids:
+            result = db.execute_query(
+                "SELECT numero_attuale, numero_massimo FROM ticket_reparto WHERE id_reparto = %s", 
+                (reparto_id,)
+            )
             if result:
                 numero_attuale, numero_massimo = result[0]
                 if azione == "avanti" and numero_attuale < numero_massimo:
-                    db.execute_query("UPDATE ticket_reparto SET numero_attuale = numero_attuale + 1 WHERE id_reparto = %s", (reparto_id,), commit=True)
+                    db.execute_query(
+                        "UPDATE ticket_reparto SET numero_attuale = numero_attuale + 1 WHERE id_reparto = %s", 
+                        (reparto_id,), commit=True
+                    )
                 elif azione == "indietro" and numero_attuale > 0:
-                    db.execute_query("UPDATE ticket_reparto SET numero_attuale = numero_attuale - 1 WHERE id_reparto = %s", (reparto_id,), commit=True)
+                    db.execute_query(
+                        "UPDATE ticket_reparto SET numero_attuale = numero_attuale - 1 WHERE id_reparto = %s", 
+                        (reparto_id,), commit=True
+                    )
                 elif azione == "reset":
-                    db.execute_query("UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = %s", (reparto_id,), commit=True)
+                    db.execute_query(
+                        "UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = %s", 
+                        (reparto_id,), commit=True
+                    )
 
-                numeri_ticket = dict(db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto"))
+                # Ricarica i dati aggiornati dei ticket
+                numeri_ticket = dict(db.execute_query(numeri_ticket_query, reparti_ids))
+
+                # Invio aggiornamento ai client via socket
                 socketio.emit("update_tickets", numeri_ticket)
-    
+
     db.close()
     return render_template("gestione_ticket.html", reparti=reparti, numeri_ticket=numeri_ticket)
 
