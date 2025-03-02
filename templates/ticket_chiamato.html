@@ -240,6 +240,18 @@ document.addEventListener("DOMContentLoaded", function() {
         msg.pitch = 1.2;
         speechSynthesis.speak(msg);
     }, { once: true });
+
+// Tentativo forzato per attivare la voce sui tablet e dispositivi mobili
+    setTimeout(() => {
+        if (!selectedVoice) loadVoices();
+        if (selectedVoice) {
+            var msg = new SpeechSynthesisUtterance("Test numero uno");
+            msg.voice = selectedVoice;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
+            speechSynthesis.speak(msg);
+        }
+    }, 3000);
 });
 
     </script>
