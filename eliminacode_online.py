@@ -2,6 +2,7 @@ import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
+from escpos.printer import Network
 
 
 app = Flask(__name__)
@@ -284,7 +285,6 @@ def cancella_utente(user_id):
         return redirect("/login")
     return redirect("/dashboard_admin")
 
-
 @app.route("/gestisci_licenze/<int:user_id>", methods=["GET", "POST"])
 def gestisci_licenze(user_id):
     if not session.get("is_admin"):
@@ -295,9 +295,10 @@ def gestisci_licenze(user_id):
     licenze_attuali = db.get_licenze_utente(user_id)
 
     if request.method == "POST":
-        # Branch per aggiornare le licenze, identificato dal campo nascosto update_licenze
+        # Gestione delle licenze
         if "update_licenze" in request.form:
             licenze_selezionate = request.form.getlist("licenze")
+
             # Rimuove le licenze non più selezionate
             for licenza in list(licenze_attuali.keys()):
                 if licenza not in licenze_selezionate:
@@ -306,6 +307,7 @@ def gestisci_licenze(user_id):
                         (user_id, licenza), commit=True
                     )
                     del licenze_attuali[licenza]
+
             # Aggiunge le nuove licenze non presenti
             for licenza in licenze_selezionate:
                 if licenza not in licenze_attuali:
@@ -315,6 +317,7 @@ def gestisci_licenze(user_id):
                         (user_id, licenza, scadenza), commit=True
                     )
                     licenze_attuali[licenza] = scadenza
+
             # Aggiorna le scadenze se modificate
             for licenza in licenze_attuali:
                 if f"scadenza_{licenza}" in request.form:
@@ -325,6 +328,7 @@ def gestisci_licenze(user_id):
                     )
                     licenze_attuali[licenza] = nuova_scadenza
 
+        # Aggiunta di un nuovo reparto con indirizzo IP
         elif "nuovo_reparto" in request.form:
             if "eliminacode" in licenze_attuali:
                 licenza_id_result = db.execute_query(
@@ -333,13 +337,29 @@ def gestisci_licenze(user_id):
                 )
                 if licenza_id_result:
                     nuovo_reparto = request.form["nuovo_reparto"].strip()
+                    ip_address = request.form.get("ip_reparto", "").strip()
+
                     db.execute_query(
-                        "INSERT INTO reparti (nome, id_licenza) VALUES (%s, %s)",
-                        (nuovo_reparto, licenza_id_result[0][0]), commit=True
+                        "INSERT INTO reparti (nome, ip_address, id_licenza) VALUES (%s, %s, %s)",
+                        (nuovo_reparto, ip_address, licenza_id_result[0][0]), commit=True
                     )
+
+        # Eliminazione di un reparto
         elif "elimina_reparto" in request.form:
             reparto_id = request.form["elimina_reparto"]
             db.execute_query("DELETE FROM reparti WHERE id = %s", (reparto_id,), commit=True)
+
+        # Modifica dell'IP di un reparto esistente
+        elif "modifica_ip_reparto" in request.form:
+            reparto_id = request.form.get("reparto_id")
+            nuovo_ip = request.form.get("nuovo_ip", "").strip()
+            if reparto_id and nuovo_ip:
+                db.execute_query(
+                    "UPDATE reparti SET ip_address = %s WHERE id = %s",
+                    (nuovo_ip, reparto_id), commit=True
+                )
+
+        # Aggiunta di una fila al reparto
         elif "nuova_fila" in request.form:
             reparto_id = request.form.get("reparto_id")
             nuova_fila = request.form.get("nuova_fila").strip()
@@ -348,6 +368,8 @@ def gestisci_licenze(user_id):
                     "INSERT INTO file_reparto (nome, id_reparto) VALUES (%s, %s)",
                     (nuova_fila, reparto_id), commit=True
                 )
+
+        # Eliminazione di una fila
         elif "elimina_file" in request.form:
             file_id = request.form["elimina_file"]
             db.execute_query("DELETE FROM file_reparto WHERE id = %s", (file_id,), commit=True)
@@ -356,18 +378,20 @@ def gestisci_licenze(user_id):
         db.close()
         return redirect(f"/gestisci_licenze/{user_id}")
 
+    # Recupero dati reparti e file associati
     reparti = []
     file_reparto = {}
     if "eliminacode" in licenze_attuali:
         reparti = db.execute_query(
-            "SELECT id, nome FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
+            "SELECT id, nome, ip_address FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
             (user_id,)
         )
-        for reparto_id, reparto_nome in reparti:
+        for reparto_id, reparto_nome, ip_address in reparti:
             file_reparto[reparto_id] = db.execute_query(
                 "SELECT id, nome FROM file_reparto WHERE id_reparto = %s",
                 (reparto_id,)
             )
+
     db.close()
     return render_template("gestisci_licenze.html", user_id=user_id, licenze_disponibili=licenze_disponibili,
                            licenze_attuali=licenze_attuali, reparti=reparti, file_reparto=file_reparto)
@@ -573,10 +597,27 @@ def ritira_ticket_qr():
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti)
 
-@app.route("/stampa_ticket/<reparto_nome>/<int:ticket_number>")
-def stampa_ticket(reparto_nome, ticket_number):
-    """Simula la stampa del ticket generando una pagina HTML."""
-    return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
+
+def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante):
+    try:
+        # Connessione alla stampante termica tramite il suo indirizzo IP
+        p = Network(ip_stampante)
+        
+        # Stampare il ticket
+        p.set(font='a', align='center', width=2, height=2)
+        p.text("TICKET\n")
+        p.set(height=1)
+        p.text(f"Reparto: {reparto_nome}\n")
+        p.set(width=3, height=3)
+        p.text(f"Numero: {ticket_number}\n")
+        p.set(width=1, height=1)
+        p.text("----------------------\n")
+        p.cut()  # Taglia il ticket alla fine
+
+        return True  # Stampa riuscita
+    except Exception as e:
+        print(f"Errore nella stampa: {e}")
+        return False  # Stampa fallita
 
 
 
