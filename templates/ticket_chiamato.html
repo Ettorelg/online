@@ -156,102 +156,91 @@
     </style>
 
     <script>
-        var socket = io();
-        var selectedVoice = null;
+var socket = io();
+var selectedVoice = null;
 
-        function loadVoices() {
-            var voices = window.speechSynthesis.getVoices();
-            console.log("🔊 Voci disponibili:", voices);
+function loadVoices() {
+    var voices = window.speechSynthesis.getVoices();
+    console.log("🔊 Voci disponibili:", voices);
 
-            for (var i = 0; i < voices.length; i++) {
-                if (voices[i].name === "Microsoft Elsa - Italian (Italy)") {
-                    selectedVoice = voices[i];
-                    break;
-                }
+    selectedVoice = voices.find(v => v.name.toLowerCase().includes("google italiano femminile")) || 
+                    voices.find(v => v.name.toLowerCase().includes("alice")) || 
+                    voices.find(v => v.lang === "it-IT");
+
+    console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+}
+
+
+function announceNumber(number) {
+    if (!selectedVoice) {
+        console.warn("❌ Nessuna voce selezionata, impossibile riprodurre l'audio.");
+        return;
+    }
+    var msg = new SpeechSynthesisUtterance("Numero " + number);
+    msg.voice = selectedVoice;
+    msg.rate = 0.7;
+    msg.pitch = 1.0;
+    speechSynthesis.speak(msg);
+}
+
+function highlightNumber(element) {
+    element.classList.add("highlight");
+    setTimeout(() => element.classList.remove("highlight"), 5000);
+}
+
+socket.on("update_tickets", function(numeri) {
+    for (var reparto in numeri) {
+        var ticketElement = document.getElementById("ticket-" + reparto);
+        if (ticketElement) {
+            var oldNumber = ticketElement.innerText;
+            ticketElement.innerText = numeri[reparto];
+
+            if (oldNumber != numeri[reparto]) {
+                highlightNumber(ticketElement);
+                announceNumber(numeri[reparto]);
             }
-
-            if (!selectedVoice) {
-                for (var i = 0; i < voices.length; i++) {
-                    if (voices[i].lang === "it-IT") {
-                        selectedVoice = voices[i];
-                        break;
-                    }
-                }
-            }
-
-            console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
         }
+    }
+});
 
-        function announceNumber(number, reparto) {
-            var msg = new SpeechSynthesisUtterance("Numero " + number);
-            msg.voice = selectedVoice;
-            msg.rate = 0.7;
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
-        }
+document.addEventListener("DOMContentLoaded", function() {
+    let qrContainer = document.getElementById("qrcode");
+    let qrCode;
 
-        function highlightNumber(element) {
-            element.classList.add("highlight");
-            setTimeout(() => element.classList.remove("highlight"), 5000);
-        }
-
-        socket.on("update_tickets", function(numeri) {
-            for (var reparto in numeri) {
-                var ticketElement = document.getElementById("ticket-" + reparto);
-                if (ticketElement) {
-                    var oldNumber = ticketElement.innerText;
-                    ticketElement.innerText = numeri[reparto];
-
-                    if (oldNumber != numeri[reparto]) {
-                        highlightNumber(ticketElement);
-                        announceNumber(numeri[reparto], ticketElement.dataset.reparto);
-                    }
-                }
-            }
+    function generateQRCode() {
+        qrContainer.innerHTML = "";
+        let size = qrContainer.offsetWidth;
+        qrCode = new QRCode(qrContainer, {
+            text: window.location.origin + "/ritira_ticket_qr",
+            width: size,
+            height: size
         });
+    }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            let qrContainer = document.getElementById("qrcode");
-            let qrCode;
+    setTimeout(generateQRCode, 100);
+    window.addEventListener("resize", generateQRCode);
 
-            function generateQRCode() {
-                qrContainer.innerHTML = ""; // Svuota il contenitore
-                let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+    // Scorrimento immagini
+    let currentIndex = 0;
+    const images = document.querySelector(".carousel-images");
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % images.children.length;
+        images.style.transform = `translateX(-${currentIndex * 100}%)`;
+    }, 3000);
 
-                // Genera il QR Code con la dimensione dinamica
-                qrCode = new QRCode(qrContainer, {
-                    text: window.location.origin + "/ritira_ticket_qr",
-                    width: size,
-                    height: size
-                });
-            }
-			
-			// Genera il QR Code iniziale dopo il caricamento della pagina
-            setTimeout(generateQRCode, 100);
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 500);
 
-            // Ridisegna il QR Code al ridimensionamento della finestra
-            window.addEventListener("resize", function () {
-                generateQRCode();
-            });
-            // Scorrimento immagini
-            let currentIndex = 0;
-            const images = document.querySelector(".carousel-images");
-            setInterval(() => {
-                currentIndex = (currentIndex + 1) % images.children.length;
-                images.style.transform = `translateX(-${currentIndex * 100}%)`;
-            }, 3000);
-        
-            window.speechSynthesis.onvoiceschanged = loadVoices;
-            setTimeout(loadVoices, 500);
-        });
+    // Richiesta di interazione dell'utente per attivare l'audio su alcuni dispositivi
+    document.body.addEventListener("click", function() {
+        var msg = new SpeechSynthesisUtterance("Audio attivato");
+        msg.voice = selectedVoice;
+        msg.rate = 0.6;
+        msg.pitch = 1.2;
+        speechSynthesis.speak(msg);
+    }, { once: true });
+});
 
-        function testVoice() {
-            var msg = new SpeechSynthesisUtterance("Audio attivato");
-            msg.voice = selectedVoice;
-            msg.rate = 0.6;
-            msg.pitch = 1.2;
-            window.speechSynthesis.speak(msg);
-        }
     </script>
 </head>
 <body>
