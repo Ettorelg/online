@@ -63,50 +63,60 @@
     {% if "eliminacode" in licenze_attuali %}
     <h3>Gestisci Reparti e File</h3>
 
-    <!-- Form per aggiungere un nuovo reparto -->
-    <form method="POST">
-        <label for="nuovo_reparto">Aggiungi Reparto:</label>
-        <input type="text" id="nuovo_reparto" name="nuovo_reparto" required>
-        <button type="submit">Aggiungi</button>
-    </form>
+<form method="POST">
+    <label for="nuovo_reparto">Aggiungi Reparto:</label>
+    <input type="text" id="nuovo_reparto" name="nuovo_reparto" required>
+    <label for="ip_reparto">Indirizzo IP:</label>
+    <input type="text" id="ip_reparto" name="ip_reparto" placeholder="192.168.1.1">
+    <button type="submit">Aggiungi</button>
+</form>
+
 
     <h4>Reparti Esistenti</h4>
-    <table border="1">
-        <tr>
-            <th>Reparto</th>
-            <th>File (Code)</th>
-            <th>Azioni</th>
-        </tr>
-        {% for reparto_id, reparto_nome in reparti %}
-        <tr>
-            <td>{{ reparto_nome }}</td>
-            <td>
-                <ul>
-                    {% for fila_id, fila_nome in file_reparto[reparto_id] %}
-                    <li>{{ fila_nome }}
-                        <form method="POST" style="display:inline;">
-                            <input type="hidden" name="elimina_file" value="{{ fila_id }}">
-                            <button type="submit">X</button>
-                        </form>
-                    </li>
-                    {% endfor %}
-                </ul>
-                <!-- Form per aggiungere una nuova fila -->
-                <form method="POST">
-                    <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
-                    <input type="text" name="nuova_fila" placeholder="Nuova fila" required>
-                    <button type="submit">Aggiungi Fila</button>
-                </form>
-            </td>
-            <td>
-                <form method="POST">
-                    <input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
-                    <button type="submit">Elimina Reparto</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+	<table border="1">
+		<tr>
+			<th>Reparto</th>
+			<th>Indirizzo IP</th>
+			<th>File (Code)</th>
+			<th>Azioni</th>
+		</tr>
+		{% for reparto_id, reparto_nome, ip_address in reparti %}
+		<tr>
+			<td>{{ reparto_nome }}</td>
+			<td>
+				<form method="POST">
+					<input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+					<input type="text" name="nuovo_ip" value="{{ ip_address }}" placeholder="Modifica IP">
+					<button type="submit" name="modifica_ip_reparto">Salva</button>
+				</form>
+			</td>
+			<td>
+				<ul>
+					{% for fila_id, fila_nome in file_reparto[reparto_id] %}
+					<li>{{ fila_nome }}
+						<form method="POST" style="display:inline;">
+							<input type="hidden" name="elimina_file" value="{{ fila_id }}">
+							<button type="submit">X</button>
+						</form>
+					</li>
+					{% endfor %}
+				</ul>
+				<form method="POST">
+					<input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+					<input type="text" name="nuova_fila" placeholder="Nuova fila" required>
+					<button type="submit">Aggiungi Fila</button>
+				</form>
+			</td>
+			<td>
+				<form method="POST">
+					<input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
+					<button type="submit">Elimina Reparto</button>
+				</form>
+			</td>
+		</tr>
+		{% endfor %}
+	</table>
+
     {% endif %}
 
     <br>
