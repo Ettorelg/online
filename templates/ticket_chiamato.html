@@ -163,13 +163,14 @@ function loadVoices() {
     var voices = window.speechSynthesis.getVoices();
     console.log("🔊 Voci disponibili:", voices);
 
-    selectedVoice = voices.find(v => v.name.toLowerCase().includes("google italiano femminile")) || 
-                    voices.find(v => v.name.toLowerCase().includes("alice")) || 
+    selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                    voices.find(v => v.name.includes("Google italiano femminile")) ||
+                    voices.find(v => v.name.includes("Alice")) ||
+                    voices.find(v => v.name.toLowerCase().includes("female")) ||
                     voices.find(v => v.lang === "it-IT");
 
     console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
 }
-
 
 function announceNumber(number) {
     if (!selectedVoice) {
