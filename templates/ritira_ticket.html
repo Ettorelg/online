@@ -95,35 +95,44 @@
             }
         }
     </style>
+    
 <script>
-    function scaricaTicket(repartoNome, ticketNumber) {
-        let formData = new FormData();
-        formData.append("reparto_nome", repartoNome);
-        formData.append("ticket_number", ticketNumber);
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".ritira-ticket-form").forEach(form => {
+            form.addEventListener("submit", function(event) {
+                event.preventDefault(); // Evita il refresh della pagina
 
-        fetch("/genera_ticket", {
-            method: "POST",
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // 🔹 Scarica automaticamente il file del ticket
-                let downloadLink = document.createElement("a");
-                downloadLink.href = data.file_url;
-                downloadLink.download = `ticket_${ticketNumber}.txt`;
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
-            } else {
-                alert("Errore: " + data.message);
-            }
-        })
-        .catch(error => console.error("Errore:", error));
+                let formData = new FormData(this);
+                fetch("/ritira_ticket", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ticket_number && data.reparto_nome) {
+                        // Genera il file di ticket per il download
+                        scaricaTicket(data.reparto_nome, data.ticket_number);
+                    } else {
+                        alert("Errore nel ritiro del ticket");
+                    }
+                })
+                .catch(error => console.error("Errore:", error));
+            });
+        });
+    });
+
+    function scaricaTicket(repartoNome, ticketNumber) {
+        let ticketContent = `TICKET\n\nReparto: ${repartoNome}\nNumero: ${ticketNumber}\n-------------------`;
+        let blob = new Blob([ticketContent], { type: "text/plain" });
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Ticket_${repartoNome}_${ticketNumber}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
-
-
+   
 </head>
 
 <body>
@@ -135,13 +144,12 @@
         <div class="reparto-container">
             <div class="reparto-nome">{{ reparto[1] }}</div>
             <form class="ritira-ticket-form">
-				<input type="hidden" name="reparto" value="{{ reparto[0] }}">
-				<input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
-				<div class="button-container">
-					<button type="submit">Prendi Ticket</button>
-				</div>
-			</form>
-
+                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
+                <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
+                <div class="button-container">
+                    <button type="submit">Prendi Ticket</button>
+                </div>
+            </form>
         </div>
         {% endfor %}
     </div>
