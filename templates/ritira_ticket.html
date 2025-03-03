@@ -140,6 +140,26 @@
             document.body.removeChild(ticketDiv);
         }, 3000);
     }
+	function stampaTicketDalTablet(repartoNome, ticketNumber, ipStampante) {
+        let porta = 9100; // Porta ESC/POS predefinita
+
+        let socket = new WebSocket(`ws://${ipStampante}:${porta}`);
+
+        socket.onopen = function () {
+            let escposCommand = "\x1B\x40";  // Reset stampante
+            escposCommand += "\x1B\x61\x01"; // Centrare il testo
+            escposCommand += `TICKET\nReparto: ${repartoNome}\nNumero: ${ticketNumber}\n`;
+            escposCommand += "----------------------\n";
+            escposCommand += "\x1D\x56\x00"; // Taglio carta
+
+            socket.send(escposCommand);
+            socket.close();
+        };
+
+        socket.onerror = function () {
+            alert("Errore nella connessione con la stampante. Verifica l'IP.");
+        };
+    }
 </script>
 
 </head>
