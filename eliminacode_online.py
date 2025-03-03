@@ -2,7 +2,6 @@ import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
-from escpos.printer import Network
 
 
 app = Flask(__name__)
@@ -597,27 +596,10 @@ def ritira_ticket_qr():
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti)
 
-
-def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante):
-    try:
-        # Connessione alla stampante termica tramite il suo indirizzo IP
-        p = Network(ip_stampante)
-        
-        # Stampare il ticket
-        p.set(font='a', align='center', width=2, height=2)
-        p.text("TICKET\n")
-        p.set(height=1)
-        p.text(f"Reparto: {reparto_nome}\n")
-        p.set(width=3, height=3)
-        p.text(f"Numero: {ticket_number}\n")
-        p.set(width=1, height=1)
-        p.text("----------------------\n")
-        p.cut()  # Taglia il ticket alla fine
-
-        return True  # Stampa riuscita
-    except Exception as e:
-        print(f"Errore nella stampa: {e}")
-        return False  # Stampa fallita
+@app.route("/stampa_ticket/<reparto_nome>/<int:ticket_number>")
+def stampa_ticket(reparto_nome, ticket_number):
+    """Simula la stampa del ticket generando una pagina HTML."""
+    return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
 
 
