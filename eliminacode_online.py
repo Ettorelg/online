@@ -578,6 +578,9 @@ def stampa_ticket(reparto_nome, ticket_number):
     """Simula la stampa del ticket generando una pagina HTML."""
     return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
+@app.route('/download/app-debug.apk')
+def download_apk():
+    return send_from_directory('downloads', 'app-debug.apk', as_attachment=True)
 
 
 if __name__ == "__main__":
