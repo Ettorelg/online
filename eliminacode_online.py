@@ -616,48 +616,50 @@ def ritira_ticket_qr():
 
 from escpos.printer import Network
 import time
+import os
+import time
+from escpos.printer import Network
 
-def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3):
-    for tentativo in range(tentativi):
-        try:
-            print(f"🖨 Tentativo {tentativo + 1} di connessione alla stampante {ip_stampante}...")
+# 🔹 Percorso della cartella Documenti su Android
+DOCUMENTS_PATH = "/storage/emulated/0/Documents/"
 
-            # 🔹 Connessione alla stampante termica con timeout maggiore
-            p = Network(ip_stampante, timeout=10)  
+def stampa_ticket_termico(reparto_nome, ticket_number):
+    try:
+        # 🔹 Nome del file da stampare
+        file_name = f"ticket_{ticket_number}.txt"
+        file_path = os.path.join(DOCUMENTS_PATH, file_name)
 
-            # 🔹 Reset della stampante
-            p._raw(b'\x1B\x40')  
+        # 🔹 Contenuto del ticket
+        ticket_content = (
+            "************************\n"
+            "        TICKET        \n"
+            "************************\n\n"
+            f"Reparto: {reparto_nome}\n\n"
+            f"NUMERO: {ticket_number}\n\n"
+            "----------------------\n"
+        )
 
-            # 🔹 Layout del ticket
-            p.set(align='center')
-            p._raw(b"************************\n")
-            p._raw(b"        TICKET        \n")
-            p._raw(b"************************\n\n")
+        # 🔹 Salva il ticket come file .txt nella cartella Documenti
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(ticket_content)
 
-            p._raw(b"Reparto: " + reparto_nome.encode('utf-8') + b"\n\n")
+        print(f"✅ Ticket salvato in {file_path}")
 
-            # 🔹 Numero del ticket EXTRA GRANDE
-            p._raw(b'\x1D\x21\x22')  # 🔹 TESTO 4X PIÙ GRANDE (DOPPIO LARGHEZZA E ALTEZZA)
-            p._raw(b"NUMERO: " + str(ticket_number).encode('utf-8') + b"\n\n")
-            p._raw(b'\x1D\x21\x00')  # 🔹 Reset dimensione testo
+        # 🔹 Attendi un po' per permettere la stampa
+        time.sleep(10)
 
-            p._raw(b"----------------------\n")
+        # 🔹 Dopo la stampa, elimina il file
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"🗑️ File eliminato: {file_path}")
+        else:
+            print(f"⚠️ Errore: Il file {file_path} non esiste.")
 
-            # 🔹 Taglio della carta
-            p.cut()
+        return True  # Stampa riuscita
 
-            # 🔹 Chiude la connessione
-            p.close()
-
-            print(f"✅ Ticket stampato con successo per {reparto_nome} (N. {ticket_number})")
-            return True  # Stampa riuscita
-
-        except Exception as e:
-            print(f"⚠️ Tentativo {tentativo + 1} fallito: {e}")
-            time.sleep(3)  # 🔹 Aspetta 3 secondi prima di ritentare
-            
-    print(f"❌ Errore definitivo: impossibile connettersi alla stampante {ip_stampante} dopo {tentativi} tentativi.")
-    return False  # Se dopo tutti i tentativi non riesce, restituisce errore
+    except Exception as e:
+        print(f"❌ Errore nella generazione del ticket: {e}")
+        return False
 
 
 if __name__ == "__main__":
