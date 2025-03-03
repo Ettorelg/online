@@ -108,7 +108,7 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 🔹 Apri il link per il download automatico
+                // 🔹 Scarica automaticamente il file del ticket
                 let downloadLink = document.createElement("a");
                 downloadLink.href = data.file_url;
                 downloadLink.download = `ticket_${ticketNumber}.txt`;
@@ -122,6 +122,7 @@
         .catch(error => console.error("Errore:", error));
     }
 </script>
+
 
 </head>
 
