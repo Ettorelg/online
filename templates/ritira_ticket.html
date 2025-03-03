@@ -96,59 +96,30 @@
         }
     </style>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll(".ritira-ticket-form").forEach(form => {
-            form.addEventListener("submit", function(event) {
-                event.preventDefault(); // Evita il refresh della pagina
+    function scaricaTicket(repartoNome, ticketNumber) {
+        let formData = new FormData();
+        formData.append("reparto_nome", repartoNome);
+        formData.append("ticket_number", ticketNumber);
 
-                let formData = new FormData(this);
-                fetch("/ritira_ticket", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        mostraTicket(data.reparto_nome, data.ticket_number);
-                    } else {
-                        alert("Errore nella stampa: " + data.message);
-                    }
-                })
-                .catch(error => console.error("Errore:", error));
-            });
-        });
-    });
-
-    function mostraTicket(repartoNome, ticketNumber) {
-        let ticketHtml = `
-            <div id="ticket-container" class="ticket-popup">
-                <div class="ticket-content">
-                    <h2>TICKET</h2>
-                    <p><strong>Reparto:</strong> ${repartoNome}</p>
-                    <div class="ticket-number">${ticketNumber}</div>
-                    <p>-------------------</p>
-                </div>
-            </div>
-        `;
-
-        let ticketDiv = document.createElement("div");
-        ticketDiv.innerHTML = ticketHtml;
-        document.body.appendChild(ticketDiv);
-
-        // Dopo pochi secondi rimuove il popup
-        setTimeout(() => {
-            document.body.removeChild(ticketDiv);
-        }, 3000);
-    }
-    function stampaTicketDalTablet(repartoNome, ticketNumber) {
-        let ticketText = `TICKET\nReparto: ${repartoNome}\nNumero: ${ticketNumber}\n----------------------\n`;
-
-        // Apri la stampa con RawBT
-        let printWindow = window.open('rawbt:' + encodeURIComponent(ticketText), '_blank');
-
-        if (!printWindow) {
-            alert("Consenti i popup per stampare il ticket.");
-        }
+        fetch("/genera_ticket", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 🔹 Apri il link per il download automatico
+                let downloadLink = document.createElement("a");
+                downloadLink.href = data.file_url;
+                downloadLink.download = `ticket_${ticketNumber}.txt`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            } else {
+                alert("Errore: " + data.message);
+            }
+        })
+        .catch(error => console.error("Errore:", error));
     }
 </script>
 
