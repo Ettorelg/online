@@ -2,6 +2,7 @@ import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
+from escpos.printer import Network
 
 
 app = Flask(__name__)
@@ -394,51 +395,67 @@ def gestisci_licenze(user_id):
     db.close()
     return render_template("gestisci_licenze.html", user_id=user_id, licenze_disponibili=licenze_disponibili,
                            licenze_attuali=licenze_attuali, reparti=reparti, file_reparto=file_reparto)
+                           
 
+# 🔹 Route per ritirare il ticket
 @app.route("/ritira_ticket", methods=["GET", "POST"])
 def ritira_ticket():
     if "user_id" not in session:
         return redirect("/login")
-    
+
     user_id = session["user_id"]
     db = Database()
-    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
 
     reparti = db.execute_query("""
-        SELECT DISTINCT r.id, r.nome 
+        SELECT DISTINCT r.id, r.nome, r.ip_address 
         FROM reparti r
         INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = %s  -- Filtra solo i reparti associati all'utente
+        WHERE l.id_utente = %s  
           AND l.tipo = 'eliminacode'
           AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
     """, (user_id,))
 
-    if reparti is None:
-        reparti = []
-    
-    if request.method == "POST":
+    if request.method == "GET":
+        db.close()
+        return render_template("ritira_ticket.html", reparti=reparti)
+
+    # 🔹 Se la richiesta è POST, elabora il ticket
+    try:
         reparto_id = request.form.get("reparto")
         reparto_nome = request.form.get("reparto_nome")
 
         if reparto_id and reparto_nome:
             result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
-            if not result:
-                ticket_number = 1
-                db.execute_query("""
-                    INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
-                    VALUES (%s, 0, %s)
-                """, (reparto_id, ticket_number), commit=True)
-            else:
-                ticket_number = result[0][0] + 1
-                db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (ticket_number, reparto_id), commit=True)
+            ticket_number = (result[0][0] + 1) if result else 1
+
+            db.execute_query(
+                "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
+                (ticket_number, reparto_id), commit=True
+            )
+
+            ip_result = db.execute_query("SELECT ip_address FROM reparti WHERE id = %s", (reparto_id,))
+            ip_stampante = ip_result[0][0] if ip_result else None
+
             db.close()
-            
-            # Genera il ticket direttamente per la stampa
-            return jsonify({"ticket_number": ticket_number, "reparto_nome": reparto_nome})
-    
-    db.close()
-    return render_template("ritira_ticket.html", reparti=reparti)
+
+            response_data = {
+                "success": True,
+                "ticket_number": ticket_number,
+                "reparto_nome": reparto_nome,
+                "ip_stampante": ip_stampante
+            }
+
+            if ip_stampante:
+                success = stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante)
+                if not success:
+                    response_data["success"] = False
+                    response_data["message"] = "Errore nella stampa del ticket"
+
+            return jsonify(response_data)
+
+    except Exception as e:
+        print(f"❌ ERRORE SERVER: {e}")
+        return jsonify({"success": False, "message": f"Errore interno: {str(e)}"}), 500
 
 @app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
 def visualizza_ticket(reparto_id, ticket_number):
@@ -596,11 +613,51 @@ def ritira_ticket_qr():
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti)
 
-@app.route("/stampa_ticket/<reparto_nome>/<int:ticket_number>")
-def stampa_ticket(reparto_nome, ticket_number):
-    """Simula la stampa del ticket generando una pagina HTML."""
-    return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
+from escpos.printer import Network
+import time
+
+def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3):
+    for tentativo in range(tentativi):
+        try:
+            print(f"🖨 Tentativo {tentativo + 1} di connessione alla stampante {ip_stampante}...")
+
+            # 🔹 Connessione alla stampante termica con timeout maggiore
+            p = Network(ip_stampante, timeout=10)  
+
+            # 🔹 Reset della stampante
+            p._raw(b'\x1B\x40')  
+
+            # 🔹 Layout del ticket
+            p.set(align='center')
+            p._raw(b"************************\n")
+            p._raw(b"        TICKET        \n")
+            p._raw(b"************************\n\n")
+
+            p._raw(b"Reparto: " + reparto_nome.encode('utf-8') + b"\n\n")
+
+            # 🔹 Numero del ticket EXTRA GRANDE
+            p._raw(b'\x1D\x21\x22')  # 🔹 TESTO 4X PIÙ GRANDE (DOPPIO LARGHEZZA E ALTEZZA)
+            p._raw(b"NUMERO: " + str(ticket_number).encode('utf-8') + b"\n\n")
+            p._raw(b'\x1D\x21\x00')  # 🔹 Reset dimensione testo
+
+            p._raw(b"----------------------\n")
+
+            # 🔹 Taglio della carta
+            p.cut()
+
+            # 🔹 Chiude la connessione
+            p.close()
+
+            print(f"✅ Ticket stampato con successo per {reparto_nome} (N. {ticket_number})")
+            return True  # Stampa riuscita
+
+        except Exception as e:
+            print(f"⚠️ Tentativo {tentativo + 1} fallito: {e}")
+            time.sleep(3)  # 🔹 Aspetta 3 secondi prima di ritentare
+            
+    print(f"❌ Errore definitivo: impossibile connettersi alla stampante {ip_stampante} dopo {tentativi} tentativi.")
+    return False  # Se dopo tutti i tentativi non riesce, restituisce errore
 
 
 if __name__ == "__main__":
