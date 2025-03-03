@@ -2,7 +2,6 @@ import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
-from escpos.printer import Network
 
 
 app = Flask(__name__)
@@ -285,6 +284,7 @@ def cancella_utente(user_id):
         return redirect("/login")
     return redirect("/dashboard_admin")
 
+
 @app.route("/gestisci_licenze/<int:user_id>", methods=["GET", "POST"])
 def gestisci_licenze(user_id):
     if not session.get("is_admin"):
@@ -295,10 +295,9 @@ def gestisci_licenze(user_id):
     licenze_attuali = db.get_licenze_utente(user_id)
 
     if request.method == "POST":
-        # Gestione delle licenze
+        # Branch per aggiornare le licenze, identificato dal campo nascosto update_licenze
         if "update_licenze" in request.form:
             licenze_selezionate = request.form.getlist("licenze")
-
             # Rimuove le licenze non più selezionate
             for licenza in list(licenze_attuali.keys()):
                 if licenza not in licenze_selezionate:
@@ -307,7 +306,6 @@ def gestisci_licenze(user_id):
                         (user_id, licenza), commit=True
                     )
                     del licenze_attuali[licenza]
-
             # Aggiunge le nuove licenze non presenti
             for licenza in licenze_selezionate:
                 if licenza not in licenze_attuali:
@@ -317,7 +315,6 @@ def gestisci_licenze(user_id):
                         (user_id, licenza, scadenza), commit=True
                     )
                     licenze_attuali[licenza] = scadenza
-
             # Aggiorna le scadenze se modificate
             for licenza in licenze_attuali:
                 if f"scadenza_{licenza}" in request.form:
@@ -328,7 +325,6 @@ def gestisci_licenze(user_id):
                     )
                     licenze_attuali[licenza] = nuova_scadenza
 
-        # Aggiunta di un nuovo reparto con indirizzo IP
         elif "nuovo_reparto" in request.form:
             if "eliminacode" in licenze_attuali:
                 licenza_id_result = db.execute_query(
@@ -337,29 +333,13 @@ def gestisci_licenze(user_id):
                 )
                 if licenza_id_result:
                     nuovo_reparto = request.form["nuovo_reparto"].strip()
-                    ip_address = request.form.get("ip_reparto", "").strip()
-
                     db.execute_query(
-                        "INSERT INTO reparti (nome, ip_address, id_licenza) VALUES (%s, %s, %s)",
-                        (nuovo_reparto, ip_address, licenza_id_result[0][0]), commit=True
+                        "INSERT INTO reparti (nome, id_licenza) VALUES (%s, %s)",
+                        (nuovo_reparto, licenza_id_result[0][0]), commit=True
                     )
-
-        # Eliminazione di un reparto
         elif "elimina_reparto" in request.form:
             reparto_id = request.form["elimina_reparto"]
             db.execute_query("DELETE FROM reparti WHERE id = %s", (reparto_id,), commit=True)
-
-        # Modifica dell'IP di un reparto esistente
-        elif "modifica_ip_reparto" in request.form:
-            reparto_id = request.form.get("reparto_id")
-            nuovo_ip = request.form.get("nuovo_ip", "").strip()
-            if reparto_id and nuovo_ip:
-                db.execute_query(
-                    "UPDATE reparti SET ip_address = %s WHERE id = %s",
-                    (nuovo_ip, reparto_id), commit=True
-                )
-
-        # Aggiunta di una fila al reparto
         elif "nuova_fila" in request.form:
             reparto_id = request.form.get("reparto_id")
             nuova_fila = request.form.get("nuova_fila").strip()
@@ -368,8 +348,6 @@ def gestisci_licenze(user_id):
                     "INSERT INTO file_reparto (nome, id_reparto) VALUES (%s, %s)",
                     (nuova_fila, reparto_id), commit=True
                 )
-
-        # Eliminazione di una fila
         elif "elimina_file" in request.form:
             file_id = request.form["elimina_file"]
             db.execute_query("DELETE FROM file_reparto WHERE id = %s", (file_id,), commit=True)
@@ -378,142 +356,66 @@ def gestisci_licenze(user_id):
         db.close()
         return redirect(f"/gestisci_licenze/{user_id}")
 
-    # Recupero dati reparti e file associati
     reparti = []
     file_reparto = {}
     if "eliminacode" in licenze_attuali:
         reparti = db.execute_query(
-            "SELECT id, nome, ip_address FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
+            "SELECT id, nome FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
             (user_id,)
         )
-        for reparto_id, reparto_nome, ip_address in reparti:
+        for reparto_id, reparto_nome in reparti:
             file_reparto[reparto_id] = db.execute_query(
                 "SELECT id, nome FROM file_reparto WHERE id_reparto = %s",
                 (reparto_id,)
             )
-
     db.close()
     return render_template("gestisci_licenze.html", user_id=user_id, licenze_disponibili=licenze_disponibili,
                            licenze_attuali=licenze_attuali, reparti=reparti, file_reparto=file_reparto)
-                           
 
-# 🔹 Route per ritirare il ticket
 @app.route("/ritira_ticket", methods=["GET", "POST"])
 def ritira_ticket():
     if "user_id" not in session:
         return redirect("/login")
-
+    
     user_id = session["user_id"]
     db = Database()
+    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
+    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
 
     reparti = db.execute_query("""
-        SELECT DISTINCT r.id, r.nome, r.ip_address 
+        SELECT DISTINCT r.id, r.nome 
         FROM reparti r
         INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = %s  
+        WHERE l.id_utente = %s  -- Filtra solo i reparti associati all'utente
           AND l.tipo = 'eliminacode'
           AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
     """, (user_id,))
 
-    if request.method == "GET":
-        db.close()
-        return render_template("ritira_ticket.html", reparti=reparti)
-
-    # 🔹 Se la richiesta è POST, elabora il ticket
-    try:
+    if reparti is None:
+        reparti = []
+    
+    if request.method == "POST":
         reparto_id = request.form.get("reparto")
         reparto_nome = request.form.get("reparto_nome")
 
         if reparto_id and reparto_nome:
             result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
-            ticket_number = (result[0][0] + 1) if result else 1
-
-            db.execute_query(
-                "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
-                (ticket_number, reparto_id), commit=True
-            )
-
-            ip_result = db.execute_query("SELECT ip_address FROM reparti WHERE id = %s", (reparto_id,))
-            ip_stampante = ip_result[0][0] if ip_result else None
-
+            if not result:
+                ticket_number = 1
+                db.execute_query("""
+                    INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
+                    VALUES (%s, 0, %s)
+                """, (reparto_id, ticket_number), commit=True)
+            else:
+                ticket_number = result[0][0] + 1
+                db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (ticket_number, reparto_id), commit=True)
             db.close()
-
-            response_data = {
-                "success": True,
-                "ticket_number": ticket_number,
-                "reparto_nome": reparto_nome,
-                "ip_stampante": ip_stampante
-            }
-
-            if ip_stampante:
-                success = stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante)
-                if not success:
-                    response_data["success"] = False
-                    response_data["message"] = "Errore nella stampa del ticket"
-
-            return jsonify(response_data)
-
-    except Exception as e:
-        print(f"❌ ERRORE SERVER: {e}")
-        return jsonify({"success": False, "message": f"Errore interno: {str(e)}"}), 500
-
-# 🔹 Cartella temporanea su Railway
-TEMP_FOLDER = "/tmp/"
-
-def genera_ticket_file(reparto_nome, ticket_number):
-    """ Crea un file di testo con il ticket e lo salva nella cartella temporanea. """
-    try:
-        file_name = f"ticket_{ticket_number}.txt"
-        file_path = os.path.join(TEMP_FOLDER, file_name)
-
-        # 🔹 Contenuto del ticket
-        ticket_content = (
-            "************************\n"
-            "        TICKET        \n"
-            "************************\n\n"
-            f"Reparto: {reparto_nome}\n\n"
-            f"NUMERO: {ticket_number}\n\n"
-            "----------------------\n"
-        )
-
-        # 🔹 Scrive il file temporaneo
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(ticket_content)
-
-        print(f"✅ Ticket creato: {file_path}")
-        return file_path
-
-    except Exception as e:
-        print(f"❌ Errore nella generazione del file: {e}")
-        return None
-
-@app.route("/genera_ticket", methods=["POST"])
-def genera_ticket():
-    """ Riceve i dati del ticket, genera il file e fornisce un link per il download. """
-    reparto_nome = request.form.get("reparto_nome")
-    ticket_number = request.form.get("ticket_number")
-
-    if not reparto_nome or not ticket_number:
-        return jsonify({"success": False, "message": "Dati mancanti per il ticket"}), 400
-
-    # 🔹 Genera il file del ticket
-    file_path = genera_ticket_file(reparto_nome, ticket_number)
-
-    if file_path:
-        return jsonify({"success": True, "file_url": f"/scarica_ticket?file={os.path.basename(file_path)}"})
-    else:
-        return jsonify({"success": False, "message": "Errore nella creazione del file"}), 500
-
-@app.route("/scarica_ticket", methods=["GET"])
-def scarica_ticket():
-    """ Fornisce il file del ticket per il download. """
-    file_name = request.args.get("file")
-    file_path = os.path.join(TEMP_FOLDER, file_name)
-
-    if os.path.exists(file_path):
-        return send_file(file_path, as_attachment=True)
-    else:
-        return "File non trovato", 404
+            
+            # Genera il ticket direttamente per la stampa
+            return jsonify({"ticket_number": ticket_number, "reparto_nome": reparto_nome})
+    
+    db.close()
+    return render_template("ritira_ticket.html", reparti=reparti)
 
 @app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
 def visualizza_ticket(reparto_id, ticket_number):
@@ -671,53 +573,11 @@ def ritira_ticket_qr():
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti)
 
+@app.route("/stampa_ticket/<reparto_nome>/<int:ticket_number>")
+def stampa_ticket(reparto_nome, ticket_number):
+    """Simula la stampa del ticket generando una pagina HTML."""
+    return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
-from escpos.printer import Network
-import time
-import os
-import time
-from escpos.printer import Network
-
-# 🔹 Percorso della cartella Documenti su Android
-DOCUMENTS_PATH = "/storage/emulated/0/Documents/"
-
-def stampa_ticket_termico(reparto_nome, ticket_number):
-    try:
-        # 🔹 Nome del file da stampare
-        file_name = f"ticket_{ticket_number}.txt"
-        file_path = os.path.join(DOCUMENTS_PATH, file_name)
-
-        # 🔹 Contenuto del ticket
-        ticket_content = (
-            "************************\n"
-            "        TICKET        \n"
-            "************************\n\n"
-            f"Reparto: {reparto_nome}\n\n"
-            f"NUMERO: {ticket_number}\n\n"
-            "----------------------\n"
-        )
-
-        # 🔹 Salva il ticket come file .txt nella cartella Documenti
-        with open(file_path, "w", encoding="utf-8") as file:
-            file.write(ticket_content)
-
-        print(f"✅ Ticket salvato in {file_path}")
-
-        # 🔹 Attendi un po' per permettere la stampa
-        time.sleep(10)
-
-        # 🔹 Dopo la stampa, elimina il file
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            print(f"🗑️ File eliminato: {file_path}")
-        else:
-            print(f"⚠️ Errore: Il file {file_path} non esiste.")
-
-        return True  # Stampa riuscita
-
-    except Exception as e:
-        print(f"❌ Errore nella generazione del ticket: {e}")
-        return False
 
 
 if __name__ == "__main__":
