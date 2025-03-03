@@ -457,6 +457,64 @@ def ritira_ticket():
         print(f"❌ ERRORE SERVER: {e}")
         return jsonify({"success": False, "message": f"Errore interno: {str(e)}"}), 500
 
+# 🔹 Cartella temporanea su Railway
+TEMP_FOLDER = "/tmp/"
+
+def genera_ticket_file(reparto_nome, ticket_number):
+    """ Crea un file di testo con il ticket e lo salva nella cartella temporanea. """
+    try:
+        file_name = f"ticket_{ticket_number}.txt"
+        file_path = os.path.join(TEMP_FOLDER, file_name)
+
+        # 🔹 Contenuto del ticket
+        ticket_content = (
+            "************************\n"
+            "        TICKET        \n"
+            "************************\n\n"
+            f"Reparto: {reparto_nome}\n\n"
+            f"NUMERO: {ticket_number}\n\n"
+            "----------------------\n"
+        )
+
+        # 🔹 Scrive il file temporaneo
+        with open(file_path, "w", encoding="utf-8") as file:
+            file.write(ticket_content)
+
+        print(f"✅ Ticket creato: {file_path}")
+        return file_path
+
+    except Exception as e:
+        print(f"❌ Errore nella generazione del file: {e}")
+        return None
+
+@app.route("/genera_ticket", methods=["POST"])
+def genera_ticket():
+    """ Riceve i dati del ticket, genera il file e fornisce un link per il download. """
+    reparto_nome = request.form.get("reparto_nome")
+    ticket_number = request.form.get("ticket_number")
+
+    if not reparto_nome or not ticket_number:
+        return jsonify({"success": False, "message": "Dati mancanti per il ticket"}), 400
+
+    # 🔹 Genera il file del ticket
+    file_path = genera_ticket_file(reparto_nome, ticket_number)
+
+    if file_path:
+        return jsonify({"success": True, "file_url": f"/scarica_ticket?file={os.path.basename(file_path)}"})
+    else:
+        return jsonify({"success": False, "message": "Errore nella creazione del file"}), 500
+
+@app.route("/scarica_ticket", methods=["GET"])
+def scarica_ticket():
+    """ Fornisce il file del ticket per il download. """
+    file_name = request.args.get("file")
+    file_path = os.path.join(TEMP_FOLDER, file_name)
+
+    if os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True)
+    else:
+        return "File non trovato", 404
+
 @app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
 def visualizza_ticket(reparto_id, ticket_number):
     db = Database()
