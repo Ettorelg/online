@@ -580,7 +580,7 @@ def stampa_ticket(reparto_nome, ticket_number):
 
 @app.route('/download/app-debug.apk')
 def download_apk():
-    return send_from_directory('downloads', 'app-debug.apk', as_attachment=True)
+    return send_from_directory('download', 'app-debug.apk', as_attachment=True)
 
 
 if __name__ == "__main__":
