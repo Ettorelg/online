@@ -379,7 +379,21 @@ def ritira_ticket():
     
     user_id = session["user_id"]
     db = Database()
+    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
+    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
 
+    reparti = db.execute_query("""
+        SELECT DISTINCT r.id, r.nome 
+        FROM reparti r
+        INNER JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s  -- Filtra solo i reparti associati all'utente
+          AND l.tipo = 'eliminacode'
+          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+    """, (user_id,))
+
+    if reparti is None:
+        reparti = []
+    
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
         reparto_nome = request.form.get("reparto_nome")
@@ -395,21 +409,13 @@ def ritira_ticket():
             else:
                 ticket_number = result[0][0] + 1
                 db.execute_query("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (ticket_number, reparto_id), commit=True)
-
-            # ✅ Recuperiamo anche l'IP della stampante del reparto
-            printer_ip_result = db.execute_query("SELECT IP_ADDRESS FROM reparti WHERE id = %s", (reparto_id,))
-            printer_ip = printer_ip_result[0][0] if printer_ip_result else None
-
             db.close()
-
-            return jsonify({
-                "ticket_number": ticket_number,
-                "reparto_nome": reparto_nome,
-                "printer_ip": printer_ip
-            })
-
+            
+            # Genera il ticket direttamente per la stampa
+            return jsonify({"ticket_number": ticket_number, "reparto_nome": reparto_nome})
+    
     db.close()
-    return render_template("ritira_ticket.html")
+    return render_template("ritira_ticket.html", reparti=reparti)
 
 @app.route("/visualizza_ticket/<int:reparto_id>/<int:ticket_number>")
 def visualizza_ticket(reparto_id, ticket_number):
