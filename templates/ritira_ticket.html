@@ -152,17 +152,16 @@
         doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
     }
 	function prendiTicket(repartoNome, ticketNumber, printerIp) {
-    console.log("Dati inviati a Android.printTicket:");
-    console.log("Reparto:", repartoNome);
-    console.log("Numero Ticket:", ticketNumber);
-    console.log("Stampante IP:", printerIp);
-
+    console.log("Verifica Android interface:", typeof Android !== "undefined");
+    
     if (typeof Android !== "undefined") {
+        console.log("Dati inviati a Android.printTicket:", repartoNome, ticketNumber, printerIp);
         Android.printTicket(repartoNome, ticketNumber, printerIp);
     } else {
-        console.error("Android interface non disponibile!");
+        console.error("⚠️ Android interface non disponibile! La pagina potrebbe essere caricata senza accesso a WebView.");
     }
 }
+
 
 
 	
