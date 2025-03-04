@@ -96,12 +96,6 @@
         }
     </style>
     
-<!-- Aggiungi la libreria jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<!-- Aggiungi la libreria jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll(".ritira-ticket-form").forEach(form => {
@@ -116,8 +110,9 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.ticket_number && data.reparto_nome) {
-                        // Genera e scarica il PDF del ticket
-                        scaricaPDF(data.reparto_nome, data.ticket_number);
+                        // Mostra il ticket e avvia la stampa
+                        mostraTicket(data.reparto_nome, data.ticket_number);
+                        inviaTicketAllaStampante(data.reparto_nome, data.ticket_number);
                     } else {
                         alert("Errore nel ritiro del ticket");
                     }
@@ -127,29 +122,35 @@
         });
     });
 
-    function scaricaPDF(repartoNome, ticketNumber) {
-        const { jsPDF } = window.jspdf;
-        let doc = new jsPDF({
-            orientation: "portrait",
-            unit: "mm",
-            format: [80, 100] // Formato ticket termico
-        });
+    function mostraTicket(repartoNome, ticketNumber) {
+        let ticketHtml = `
+            <div id="ticket-container" class="ticket-popup">
+                <div class="ticket-content">
+                    <h2>TICKET</h2>
+                    <p><strong>Reparto:</strong> ${repartoNome}</p>
+                    <div class="ticket-number">${ticketNumber}</div>
+                    <p>-------------------</p>
+                </div>
+            </div>
+        `;
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.text("TICKET", 40, 20, { align: "center" });
+        let ticketDiv = document.createElement("div");
+        ticketDiv.innerHTML = ticketHtml;
+        document.body.appendChild(ticketDiv);
+    }
 
-        doc.setFontSize(12);
-        doc.text(`Reparto: ${repartoNome}`, 40, 40, { align: "center" });
-
-        doc.setFontSize(30);
-        doc.text(`${ticketNumber}`, 40, 60, { align: "center" });
-
-        doc.setFontSize(10);
-        doc.text("-------------------", 40, 80, { align: "center" });
-
-        // Converte il PDF in Blob e forza il download senza anteprima
-        doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
+    function inviaTicketAllaStampante(repartoNome, ticketNumber) {
+        fetch("http://localhost:5000/stampa", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ip: "192.168.1.100",  // IP della stampante in rete
+                data: `Reparto: ${repartoNome}\nNumero: ${ticketNumber}`
+            })
+        })
+        .then(response => response.text())
+        .then(data => console.log("Risultato stampa:", data))
+        .catch(error => console.error("Errore nella stampa:", error));
     }
 </script>
 
