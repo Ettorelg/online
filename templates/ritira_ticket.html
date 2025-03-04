@@ -48,111 +48,11 @@
             width: 100%;
             max-width: 450px;
         }
-
-        /* Stile del ticket */
-        .ticket-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            text-align: center;
-            width: 80mm;
-        }
-        .ticket-content {
-            font-family: Arial, sans-serif;
-        }
-        .ticket-number {
-            font-size: 50px;
-            font-weight: bold;
-            border: 2px solid #000;
-            padding: 10px;
-            margin-top: 10px;
-        }
-
-        /* Stile di stampa per stampante termica */
-        @media print {
-            body {
-                visibility: hidden;
-            }
-            .ticket-popup {
-                visibility: visible;
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 80mm;
-                height: auto;
-                padding: 5px;
-                font-size: 14px;
-                border: none;
-                box-shadow: none;
-            }
-            .ticket-number {
-                font-size: 40px;
-            }
-        }
     </style>
-    
-<!-- Aggiungi la libreria jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<!-- Aggiungi la libreria jsPDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll(".ritira-ticket-form").forEach(form => {
-            form.addEventListener("submit", function(event) {
-                event.preventDefault(); // Evita il refresh della pagina
-
-                let formData = new FormData(this);
-                fetch("/ritira_ticket", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ticket_number && data.reparto_nome) {
-                        // Genera e scarica il PDF del ticket
-                        scaricaPDF(data.reparto_nome, data.ticket_number);
-                    } else {
-                        alert("Errore nel ritiro del ticket");
-                    }
-                })
-                .catch(error => console.error("Errore:", error));
-            });
-        });
-    });
-
-    function scaricaPDF(repartoNome, ticketNumber) {
-        const { jsPDF } = window.jspdf;
-        let doc = new jsPDF({
-            orientation: "portrait",
-            unit: "mm",
-            format: [80, 100] // Formato ticket termico
-        });
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        doc.text("TICKET", 40, 20, { align: "center" });
-
-        doc.setFontSize(12);
-        doc.text(`Reparto: ${repartoNome}`, 40, 40, { align: "center" });
-
-        doc.setFontSize(30);
-        doc.text(`${ticketNumber}`, 40, 60, { align: "center" });
-
-        doc.setFontSize(10);
-        doc.text("-------------------", 40, 80, { align: "center" });
-
-        // Converte il PDF in Blob e forza il download senza anteprima
-        doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
-    }
-function prendiTicket() {
-    fetch('/api/get_ticket')  // 🔹 Chiediamo i dati del ticket al server
+function prendiTicket(repartoId) {
+    fetch('/api/get_ticket?reparto_id=' + repartoId)  // 🔹 Invia l'ID del reparto selezionato
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -161,6 +61,12 @@ function prendiTicket() {
                 var ticketNumber = data.numero_ticket;
 
                 console.log("✅ Ticket ricevuto: ", ip, repartoNome, ticketNumber);
+
+                if (!ip) {
+                    alert("❌ Nessuna stampante associata a questo reparto!");
+                    console.error("❌ IP della stampante mancante. Stampa bloccata.");
+                    return;
+                }
 
                 if (typeof window.Android !== "undefined" && typeof window.Android.printTicket === "function") {
                     window.Android.printTicket(ip, repartoNome, ticketNumber);
@@ -177,17 +83,6 @@ function prendiTicket() {
             alert("Errore di connessione al server.");
         });
 }
-
-
-function stampaTicket(ip, repartoNome, ticketNumber) {
-    console.log("Chiamata a stampaTicket con IP:", ip, "Reparto:", repartoNome, "Ticket:", ticketNumber);
-    if (window.Android) {
-        window.Android.printTicket(ip, repartoNome, ticketNumber);
-    } else {
-        alert("Errore: impossibile stampare - interfaccia non trovata");
-    }
-}
-
 </script>
 
 </head>
@@ -200,18 +95,9 @@ function stampaTicket(ip, repartoNome, ticketNumber) {
         {% for reparto in reparti %}
         <div class="reparto-container">
             <div class="reparto-nome">{{ reparto[1] }}</div>
-            <form class="ritira-ticket-form">
-                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
-                <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
-                <div class="button-container">
-					<button onclick="stampaTicket('192.168.5.32', 'Reparto Accettazione', '12345')">
-    Prendi Ticket
-</button>
-<button onclick="prendiTicket()">Prendi Ticket giusto</button>
-
-
-                </div>
-            </form>
+            <div class="button-container">
+                <button onclick="prendiTicket({{ reparto[0] }})">Prendi Ticket</button>
+            </div>
         </div>
         {% endfor %}
     </div>
