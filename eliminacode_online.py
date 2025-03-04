@@ -577,35 +577,53 @@ def ritira_ticket_qr():
 def stampa_ticket(reparto_nome, ticket_number):
     """Simula la stampa del ticket generando una pagina HTML."""
     return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
-    
+
+
 def get_ticket_data():
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 
-    # Recuperiamo il reparto e il numero ticket
+    # **Debug SQL per capire se il numero del ticket e l'IP sono NULL**
     cursor.execute("""
-        SELECT r.nome, t.numero_massimo + 1, r.ip_address
+        SELECT r.nome, COALESCE(t.numero_massimo + 1, 1), COALESCE(r.ip_address, '192.168.5.100')
         FROM reparti r
-        INNER JOIN ticket_reparto t ON r.id = t.id_reparto
-        WHERE t.id_reparto = (SELECT id FROM reparti LIMIT 1)
+        LEFT JOIN ticket_reparto t ON r.id = t.id_reparto
+        WHERE r.id = (SELECT id FROM reparti ORDER BY id LIMIT 1)
     """)
-    result = cursor.fetchone()
     
+    result = cursor.fetchone()
+    print("🔍 DEBUG SQL RESULT:", result)  # Questo scriverà nei log di Railway
+
     if result:
         reparto_nome, numero_ticket, ip_stampante = result
 
+        # **Se i dati sono nulli, impostiamo valori predefiniti**
+        if not numero_ticket:
+            numero_ticket = 1
+        if not ip_stampante:
+            ip_stampante = "192.168.5.100"
+
         # Aggiorniamo il numero massimo del ticket
-        cursor.execute("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = (SELECT id FROM reparti LIMIT 1)", (numero_ticket,))
+        cursor.execute("""
+            UPDATE ticket_reparto 
+            SET numero_massimo = %s 
+            WHERE id_reparto = (SELECT id FROM reparti ORDER BY id LIMIT 1)
+        """, (numero_ticket,))
         conn.commit()
         
         cursor.close()
         conn.close()
 
-        return {"success": True, "reparto": reparto_nome, "numero_ticket": numero_ticket, "ip_stampante": ip_stampante}
+        return {
+            "success": True,
+            "reparto": reparto_nome,
+            "numero_ticket": numero_ticket,
+            "ip_stampante": ip_stampante
+        }
     else:
         cursor.close()
         conn.close()
-        return {"success": False}
+        return {"success": False, "error": "Nessun reparto trovato"}
 
 @app.route("/api/get_ticket", methods=["GET"])
 def get_ticket():
