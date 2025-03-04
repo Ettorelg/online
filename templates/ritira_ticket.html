@@ -13,40 +13,78 @@
             background-color: #f9f9f9;
         }
         .container {
-            max-width: 700px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
             margin: auto;
+            padding: 20px;
         }
         .reparto-container {
             background: white;
-            margin-bottom: 15px;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             text-align: center;
+            transition: transform 0.2s ease-in-out;
+        }
+        .reparto-container:hover {
+            transform: scale(1.05);
         }
         .reparto-nome {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             color: #333;
         }
         .button-container {
             display: flex;
             justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 10px;
+            margin-top: 15px;
         }
         .button-container button {
-            font-size: 24px;
-            padding: 15px 25px;
+            font-size: 26px;
+            padding: 20px 30px;
             cursor: pointer;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             background: #007bff;
             color: white;
             width: 100%;
-            max-width: 450px;
+            max-width: 400px;
+            transition: background 0.3s;
+        }
+        .button-container button:hover {
+            background: #0056b3;
+        }
+
+        /* Adatta la griglia per tablet */
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
+            .reparto-nome {
+                font-size: 24px;
+            }
+            .button-container button {
+                font-size: 22px;
+                padding: 18px 28px;
+            }
+        }
+
+        /* Stile per schermi più piccoli */
+        @media (max-width: 600px) {
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .reparto-container {
+                width: 90%;
+            }
+            .button-container button {
+                width: 100%;
+            }
         }
     </style>
 
@@ -91,7 +129,7 @@ function prendiTicket(repartoId) {
 
 <body>
 
-    <h2>Ritira il tuo Ticket</h2>
+    <h2 style="font-size: 32px; margin-bottom: 20px;">Ritira il tuo Ticket</h2>
 
     <div class="container">
         {% for reparto in reparti %}
