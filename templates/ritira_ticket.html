@@ -158,7 +158,14 @@ function stampaTicket(ip, repartoNome, ticketNumber) {
         alert("Errore: impossibile stampare");
     }
 }
-
+function stampaTicket(ip, repartoNome, ticketNumber) {
+    console.log("Chiamata a stampaTicket con IP:", ip, "Reparto:", repartoNome, "Ticket:", ticketNumber);
+    if (window.Android) {
+        window.Android.printTicket(ip, repartoNome, ticketNumber);
+    } else {
+        alert("Errore: impossibile stampare - interfaccia non trovata");
+    }
+}
 
 </script>
 
@@ -176,7 +183,6 @@ function stampaTicket(ip, repartoNome, ticketNumber) {
                 <input type="hidden" name="reparto" value="{{ reparto[0] }}">
                 <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
                 <div class="button-container">
-                    <button type="submit">Prendi Ticket</button>
 					<button onclick="stampaTicket('192.168.5.32', 'Reparto Accettazione', '12345')">
     Prendi Ticket
 </button>
