@@ -666,6 +666,51 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
     return False  # Se dopo tutti i tentativi non riesce, restituisce errore
 
 
+
+def get_ticket_data(reparto_id):
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+
+    # Recuperiamo il reparto specifico e l'IP della stampante
+    cursor.execute("""
+        SELECT r.nome, t.numero_massimo + 1, r.ip_address
+        FROM reparti r
+        INNER JOIN ticket_reparto t ON r.id = t.id_reparto
+        WHERE t.id_reparto = %s
+    """, (reparto_id,))
+    result = cursor.fetchone()
+    
+    if result:
+        reparto_nome, numero_ticket, ip_stampante = result
+
+        # Aggiorniamo il numero massimo del ticket SOLO per il reparto selezionato
+        cursor.execute("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (numero_ticket, reparto_id))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+
+        return {
+            "success": True,
+            "reparto": reparto_nome,
+            "numero_ticket": numero_ticket,
+            "ip_stampante": ip_stampante
+        }
+    else:
+        cursor.close()
+        conn.close()
+        return {"success": False}
+
+@app.route("/api/get_ticket", methods=["GET"])
+def get_ticket():
+    reparto_id = request.args.get("reparto_id")  # Riceviamo l'ID del reparto dalla richiesta
+    if not reparto_id:
+        return jsonify({"success": False, "error": "Nessun ID reparto specificato"})
+
+    print(f"📢 DEBUG: Richiesta ricevuta per reparto ID {reparto_id}")  # <-- Aggiunto per debug
+    return jsonify(get_ticket_data(reparto_id))
+
+
 if __name__ == "__main__":
     db = Database()
     db.crea_tabelle()
