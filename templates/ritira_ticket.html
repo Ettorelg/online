@@ -151,13 +151,34 @@
         // Converte il PDF in Blob e forza il download senza anteprima
         doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
     }
-function stampaTicket(ip, repartoNome, ticketNumber) {
-    if (window.Android) {
-        window.Android.printTicket(ip, repartoNome, ticketNumber);
-    } else {
-        alert("Errore: impossibile stampare");
-    }
+function prendiTicket() {
+    fetch('/api/get_ticket')  // 🔹 Chiediamo i dati del ticket al server
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                var ip = data.ip_stampante;
+                var repartoNome = data.reparto;
+                var ticketNumber = data.numero_ticket;
+
+                console.log("✅ Ticket ricevuto: ", ip, repartoNome, ticketNumber);
+
+                if (typeof window.Android !== "undefined" && typeof window.Android.printTicket === "function") {
+                    window.Android.printTicket(ip, repartoNome, ticketNumber);
+                } else {
+                    alert("⚠️ Errore: interfaccia Android non trovata!");
+                    console.error("❌ window.Android.printTicket non è disponibile.");
+                }
+            } else {
+                alert("Errore nel recupero del ticket.");
+            }
+        })
+        .catch(error => {
+            console.error("Errore nella richiesta:", error);
+            alert("Errore di connessione al server.");
+        });
 }
+
+
 function stampaTicket(ip, repartoNome, ticketNumber) {
     console.log("Chiamata a stampaTicket con IP:", ip, "Reparto:", repartoNome, "Ticket:", ticketNumber);
     if (window.Android) {
@@ -186,6 +207,8 @@ function stampaTicket(ip, repartoNome, ticketNumber) {
 					<button onclick="stampaTicket('192.168.5.32', 'Reparto Accettazione', '12345')">
     Prendi Ticket
 </button>
+<button onclick="prendiTicket()">Prendi Ticket giusto</button>
+
 
                 </div>
             </form>
