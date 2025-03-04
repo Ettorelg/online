@@ -578,30 +578,36 @@ def stampa_ticket(reparto_nome, ticket_number):
     """Simula la stampa del ticket generando una pagina HTML."""
     return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
 
-def get_ticket_data():
+
+def get_ticket_data(reparto_id):
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 
-    # Recuperiamo il reparto, il numero ticket e l'IP della stampante
+    # Recuperiamo il reparto specifico e l'IP della stampante
     cursor.execute("""
-        SELECT r.nome, t.numero_massimo + 1, COALESCE(r.ip_address, '192.168.5.100')
+        SELECT r.nome, t.numero_massimo + 1, r.ip_address
         FROM reparti r
         INNER JOIN ticket_reparto t ON r.id = t.id_reparto
-        WHERE t.id_reparto = (SELECT id FROM reparti ORDER BY id LIMIT 1)
-    """)
+        WHERE t.id_reparto = %s
+    """, (reparto_id,))
     result = cursor.fetchone()
     
     if result:
         reparto_nome, numero_ticket, ip_stampante = result
 
-        # Aggiorniamo il numero massimo del ticket
-        cursor.execute("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = (SELECT id FROM reparti ORDER BY id LIMIT 1)", (numero_ticket,))
+        # Aggiorniamo il numero massimo del ticket SOLO per il reparto selezionato
+        cursor.execute("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s", (numero_ticket, reparto_id))
         conn.commit()
         
         cursor.close()
         conn.close()
 
-        return {"success": True, "reparto": reparto_nome, "numero_ticket": numero_ticket, "ip_stampante": ip_stampante}
+        return {
+            "success": True,
+            "reparto": reparto_nome,
+            "numero_ticket": numero_ticket,
+            "ip_stampante": ip_stampante
+        }
     else:
         cursor.close()
         conn.close()
@@ -609,8 +615,12 @@ def get_ticket_data():
 
 @app.route("/api/get_ticket", methods=["GET"])
 def get_ticket():
-    return jsonify(get_ticket_data())
+    reparto_id = request.args.get("reparto_id")  # Riceviamo l'ID del reparto dalla richiesta
+    if not reparto_id:
+        return jsonify({"success": False, "error": "Nessun ID reparto specificato"})
 
+    print(f"📢 DEBUG: Richiesta ricevuta per reparto ID {reparto_id}")  # <-- Aggiunto per debug
+    return jsonify(get_ticket_data(reparto_id))
 
 
 
