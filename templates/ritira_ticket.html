@@ -127,34 +127,30 @@
         });
     });
 
- function scaricaPDF(repartoNome, ticketNumber, printerIp) {
-    const { jsPDF } = window.jspdf;
-    let doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [80, 100] // Formato ticket termico
-    });
+    function scaricaPDF(repartoNome, ticketNumber) {
+        const { jsPDF } = window.jspdf;
+        let doc = new jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: [80, 100] // Formato ticket termico
+        });
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("TICKET", 40, 20, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("TICKET", 40, 20, { align: "center" });
 
-    doc.setFontSize(12);
-    doc.text(`Reparto: ${repartoNome}`, 40, 40, { align: "center" });
+        doc.setFontSize(12);
+        doc.text(`Reparto: ${repartoNome}`, 40, 40, { align: "center" });
 
-    doc.setFontSize(12);
-    doc.text(`Stampante IP: ${printerIp}`, 40, 50, { align: "center" });
+        doc.setFontSize(30);
+        doc.text(`${ticketNumber}`, 40, 60, { align: "center" });
 
-    doc.setFontSize(30);
-    doc.text(`${ticketNumber}`, 40, 70, { align: "center" });
+        doc.setFontSize(10);
+        doc.text("-------------------", 40, 80, { align: "center" });
 
-    doc.setFontSize(10);
-    doc.text("-------------------", 40, 90, { align: "center" });
-
-    // Converte il PDF in Blob e forza il download senza anteprima
-    doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
-}
-
+        // Converte il PDF in Blob e forza il download senza anteprima
+        doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
+    }
 	function prendiTicket(repartoNome, ticketNumber, printerIp) {
     Android.printTicket(repartoNome, ticketNumber, printerIp);
 }
