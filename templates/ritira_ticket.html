@@ -151,10 +151,11 @@
         // Converte il PDF in Blob e forza il download senza anteprima
         doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
     }
-	function prendiTicket(ticketData) {
-    Android.printTicket(ticketData);
+	function prendiTicket(repartoNome, ticketNumber, printerIp) {
+    Android.printTicket(repartoNome, ticketNumber, printerIp);
 }
 
+	
 </script>
 
 </head>
@@ -168,12 +169,11 @@
         <div class="reparto-container">
             <div class="reparto-nome">{{ reparto[1] }}</div>
             <form class="ritira-ticket-form">
-			<button onclick="prendiTicket('Ticket Numero 123')">Prendi Ticket</button>
-
                 <input type="hidden" name="reparto" value="{{ reparto[0] }}">
                 <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
                 <div class="button-container">
-                    <button type="submit">Prendi Ticket</button>
+					<button onclick="prendiTicket('{{ reparto[1] }}', '{{ ticket_number }}', '{{ printer_ip }}')">Prendi Ticket</button>
+
                 </div>
             </form>
         </div>
