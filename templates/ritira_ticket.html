@@ -152,28 +152,8 @@
         doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
     }
 function prendiTicket(repartoNome, ticketNumber, printerIp) {
-    console.log("✅ Dati ricevuti per stampa:");
-    console.log("Reparto:", repartoNome);
-    console.log("Numero Ticket:", ticketNumber);
-    console.log("Stampante IP:", printerIp);
-
-    if (!ticketNumber || ticketNumber.trim() === "") {
-        console.error("⚠️ Errore: Numero Ticket vuoto! ⚠️");
-        return;
-    }
-    if (!printerIp || printerIp.trim() === "") {
-        console.error("⚠️ Errore: Stampante IP vuoto! ⚠️");
-        return;
-    }
-
-    if (typeof Android !== "undefined") {
-        console.log("📡 Inviando dati a Android.printTicket...");
-        Android.printTicket(repartoNome, ticketNumber, printerIp);
-    } else {
-        console.error("❌ Android interface non disponibile!");
-    }
+    Android.printTicket(repartoNome, ticketNumber, printerIp);
 }
-
 
 
 
