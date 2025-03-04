@@ -103,29 +103,61 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll(".ritira-ticket-form").forEach(form => {
-            form.addEventListener("submit", function(event) {
-                event.preventDefault(); // Evita il refresh della pagina
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll(".ritira-ticket-form").forEach(form => {
+        form.addEventListener("submit", function(event) {
+            event.preventDefault(); // Evita il refresh della pagina
 
-                let formData = new FormData(this);
-                fetch("/ritira_ticket", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ticket_number && data.reparto_nome) {
-                        // Genera e scarica il PDF del ticket
-                        scaricaPDF(data.reparto_nome, data.ticket_number);
-                    } else {
-                        alert("Errore nel ritiro del ticket");
-                    }
-                })
-                .catch(error => console.error("Errore:", error));
-            });
+            let formData = new FormData(this);
+            fetch("/ritira_ticket", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("✅ Risposta dal server:", data);
+                if (data.ticket_number && data.reparto_nome && data.printer_ip) {
+                    console.log("📡 Chiamando prendiTicket con dati:", data.reparto_nome, data.ticket_number, data.printer_ip);
+                    prendiTicket(data.reparto_nome, data.ticket_number, data.printer_ip);
+                } else {
+                    console.error("⚠️ Errore: dati mancanti dal server!", data);
+                }
+            })
+            .catch(error => console.error("❌ Errore:", error));
         });
     });
+});
+
+// Aggiunto il recupero dei dati PRIMA di chiamare prendiTicket() per il secondo pulsante
+function richiediTicket(repartoNome, repartoId) {
+    let formData = new FormData();
+    formData.append("reparto", repartoId);
+    formData.append("reparto_nome", repartoNome);
+
+    fetch("/ritira_ticket", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("📡 Dati ricevuti dal server:", data);
+        if (data.ticket_number && data.reparto_nome && data.printer_ip) {
+            prendiTicket(data.reparto_nome, data.ticket_number, data.printer_ip);
+        } else {
+            console.error("⚠️ Errore: dati mancanti dal server!", data);
+        }
+    })
+    .catch(error => console.error("❌ Errore nel recupero dati:", error));
+}
+
+function prendiTicket(repartoNome, ticketNumber, printerIp) {
+    console.log("📡 Invio a Android.printTicket:", repartoNome, ticketNumber, printerIp);
+    if (typeof Android !== "undefined") {
+        Android.printTicket(repartoNome, ticketNumber, printerIp);
+    } else {
+        console.error("⚠️ Android interface non disponibile!");
+    }
+}
 
     function scaricaPDF(repartoNome, ticketNumber) {
         const { jsPDF } = window.jspdf;
@@ -151,9 +183,6 @@
         // Converte il PDF in Blob e forza il download senza anteprima
         doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
     }
-	function prendiTicket(repartoNome, ticketNumber, printerIp) {
-    Android.printTicket(repartoNome, ticketNumber, printerIp);
-}
 
 	
 </script>
@@ -173,8 +202,9 @@
                 <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
                 <div class="button-container">
                     <button type="submit">Prendi Ticket</button>
-					<button onclick="scaricaPDF('{{ reparto[1] }}', '{{ ticket_number }}')">Prendi Ticket</button>
-
+					<button type="button" onclick="richiediTicket('{{ reparto[1] }}', '{{ reparto[0] }}')">
+    Prendi Ticket
+</button>
                 </div>
             </form>
         </div>
