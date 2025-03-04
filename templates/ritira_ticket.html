@@ -152,8 +152,18 @@
         doc.save(`Ticket_${repartoNome}_${ticketNumber}.pdf`);
     }
 	function prendiTicket(repartoNome, ticketNumber, printerIp) {
-    Android.printTicket(repartoNome, ticketNumber, printerIp);
+    console.log("Dati inviati a Android.printTicket:");
+    console.log("Reparto:", repartoNome);
+    console.log("Numero Ticket:", ticketNumber);
+    console.log("Stampante IP:", printerIp);
+
+    if (typeof Android !== "undefined") {
+        Android.printTicket(repartoNome, ticketNumber, printerIp);
+    } else {
+        console.error("Android interface non disponibile!");
+    }
 }
+
 
 	
 </script>
@@ -172,7 +182,9 @@
                 <input type="hidden" name="reparto" value="{{ reparto[0] }}">
                 <input type="hidden" name="reparto_nome" value="{{ reparto[1] }}">
                 <div class="button-container">
-					<button onclick="prendiTicket('{{ reparto[1] }}', '{{ ticket_number }}', '{{ printer_ip }}')">Prendi Ticket</button>
+				<button onclick="prendiTicket('{{ reparto[1] }}', '{{ ticket_number }}', '{{ printer_ip }}')">
+    Prendi Ticket
+</button>
 
                 </div>
             </form>
