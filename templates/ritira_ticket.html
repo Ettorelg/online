@@ -110,9 +110,11 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.ticket_number && data.reparto_nome) {
-                        // Mostra il ticket e avvia la stampa
+                        // Mostra il ticket
                         mostraTicket(data.reparto_nome, data.ticket_number);
-                        inviaTicketAllaStampante(data.reparto_nome, data.ticket_number);
+                        
+                        // INVIA LA STAMPA ALL'APP ANDROID LOCALE
+                        inviaTicketAllAppLocale(data.reparto_nome, data.ticket_number);
                     } else {
                         alert("Errore nel ritiro del ticket");
                     }
@@ -132,6 +134,29 @@
                     <p>-------------------</p>
                 </div>
             </div>
+        `;
+
+        let ticketDiv = document.createElement("div");
+        ticketDiv.innerHTML = ticketHtml;
+        document.body.appendChild(ticketDiv);
+    }
+
+    function inviaTicketAllAppLocale(repartoNome, ticketNumber) {
+        fetch("http://localhost:5000/stampa", { // L'app Android avrà un server Flask locale
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ip: "192.168.1.100",  // IP della stampante in rete
+                data: `Reparto: ${repartoNome}\nNumero: ${ticketNumber}`
+            })
+        })
+        .then(response => response.text())
+        .then(data => console.log("Risultato stampa:", data))
+        .catch(error => console.error("Errore nella stampa:", error));
+    }
+</script>
+    
+		   </div>
         `;
 
         let ticketDiv = document.createElement("div");
