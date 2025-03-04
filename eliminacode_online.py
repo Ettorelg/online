@@ -577,10 +577,41 @@ def ritira_ticket_qr():
 def stampa_ticket(reparto_nome, ticket_number):
     """Simula la stampa del ticket generando una pagina HTML."""
     return render_template("stampa_ticket.html", reparto_nome=reparto_nome, ticket_number=ticket_number)
+    
+def get_ticket_data():
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
 
-@app.route('/download/app-debug.apk')
-def download_apk():
-    return send_from_directory('download', 'app-debug.apk', as_attachment=True)
+    # Recuperiamo il reparto e il numero ticket
+    cursor.execute("""
+        SELECT r.nome, t.numero_massimo + 1, r.ip_address
+        FROM reparti r
+        INNER JOIN ticket_reparto t ON r.id = t.id_reparto
+        WHERE t.id_reparto = (SELECT id FROM reparti LIMIT 1)
+    """)
+    result = cursor.fetchone()
+    
+    if result:
+        reparto_nome, numero_ticket, ip_stampante = result
+
+        # Aggiorniamo il numero massimo del ticket
+        cursor.execute("UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = (SELECT id FROM reparti LIMIT 1)", (numero_ticket,))
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+
+        return {"success": True, "reparto": reparto_nome, "numero_ticket": numero_ticket, "ip_stampante": ip_stampante}
+    else:
+        cursor.close()
+        conn.close()
+        return {"success": False}
+
+@app.route("/api/get_ticket", methods=["GET"])
+def get_ticket():
+    return jsonify(get_ticket_data())
+
+
 
 
 if __name__ == "__main__":
