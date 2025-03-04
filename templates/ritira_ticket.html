@@ -52,7 +52,9 @@
 
 <script>
 function prendiTicket(repartoId) {
-    fetch('/api/get_ticket?reparto_id=' + repartoId)  // 🔹 Invia l'ID del reparto selezionato
+    console.log("📢 DEBUG: Reparto selezionato ID =", repartoId); // <-- Verifica se l'ID è corretto prima della richiesta
+
+    fetch(`/api/get_ticket?reparto_id=${repartoId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
