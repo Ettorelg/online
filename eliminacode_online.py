@@ -473,7 +473,7 @@ def ticket_chiamato():
     if "user_id" not in session:
         return redirect("/login")
 
-    user_id = session["user_id"]
+    user_id = session["user_id"]  # Ottieni l'ID dell'utente dalla sessione
     db = Database()
 
     numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
@@ -484,20 +484,13 @@ def ticket_chiamato():
         FROM reparti r
         INNER JOIN licenze l ON r.id_licenza = l.id
         WHERE l.id_utente = %s
-          AND l.tipo = 'eliminacode'
-          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
     """, (user_id,))
 
-    # Recupera tutte le immagini dell'utente
-    immagini = db.execute_query("""
-        SELECT immagine_url FROM immagini_utenti WHERE id_utente = %s
-    """, (user_id,))
-    
+    immagini = db.execute_query("SELECT immagine_url FROM immagini_utenti WHERE id_utente = %s", (user_id,))
     immagini_list = [row[0] for row in immagini] if immagini else []
 
     db.close()
-    return render_template("ticket_chiamato.html", reparti=reparti, numeri_chiamati=numeri_chiamati_dict, immagini=immagini_list)
-
+    return render_template("ticket_chiamato.html", user_id=user_id, reparti=reparti, numeri_chiamati=numeri_chiamati_dict, immagini=immagini_list)
 
 @app.route("/aggiorna_ticket", methods=["POST"])
 def aggiorna_ticket():
