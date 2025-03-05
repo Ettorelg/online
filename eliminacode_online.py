@@ -534,9 +534,9 @@ def gestione_ticket():
     # Mappatura reparti -> numeri ticket
     numeri_ticket = {}
     reparti_ids = [row[0] for row in reparti]
-    
+
     if reparti_ids:
-        placeholders = ', '.join(['%s'] * len(reparti_ids))  # Evita SQL Injection
+        placeholders = ', '.join(['%s'] * len(reparti_ids))
         numeri_ticket_query = f"""
             SELECT id_reparto, numero_attuale 
             FROM ticket_reparto 
@@ -547,15 +547,18 @@ def gestione_ticket():
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
         azione = request.form.get("azione")
+        nuovo_numero = request.form.get("nuovo_numero")
 
         if reparto_id and azione and int(reparto_id) in reparti_ids:
             result = db.execute_query(
-                "SELECT numero_attuale, numero_massimo FROM ticket_reparto WHERE id_reparto = %s", 
+                "SELECT numero_attuale FROM ticket_reparto WHERE id_reparto = %s", 
                 (reparto_id,)
             )
+
             if result:
-                numero_attuale, numero_massimo = result[0]
-                if azione == "avanti" and numero_attuale < numero_massimo:
+                numero_attuale = result[0][0]
+
+                if azione == "avanti":
                     db.execute_query(
                         "UPDATE ticket_reparto SET numero_attuale = numero_attuale + 1 WHERE id_reparto = %s", 
                         (reparto_id,), commit=True
@@ -570,11 +573,13 @@ def gestione_ticket():
                         "UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = %s", 
                         (reparto_id,), commit=True
                     )
+                elif azione == "imposta" and nuovo_numero.isdigit():
+                    db.execute_query(
+                        "UPDATE ticket_reparto SET numero_attuale = %s WHERE id_reparto = %s", 
+                        (int(nuovo_numero), reparto_id), commit=True
+                    )
 
-                # Ricarica i dati aggiornati dei ticket
-                numeri_ticket = dict(db.execute_query(numeri_ticket_query, reparti_ids))
-
-                # Invio aggiornamento ai client via socket
+                # Aggiorna i ticket in tempo reale via WebSocket
                 socketio.emit("update_tickets", numeri_ticket)
 
     db.close()
