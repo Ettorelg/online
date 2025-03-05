@@ -206,24 +206,19 @@
             let qrCode;
 
             function generateQRCode() {
-                qrContainer.innerHTML = ""; // Svuota il contenitore
-                let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+    qrContainer.innerHTML = ""; // Svuota il contenitore
+    let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
 
-                // Genera il QR Code con la dimensione dinamica
-                qrCode = new QRCode(qrContainer, {
-                    text: window.location.origin + "/ritira_ticket_qr",
-                    width: size,
-                    height: size
-                });
-            }
-			
-			// Genera il QR Code iniziale dopo il caricamento della pagina
-            setTimeout(generateQRCode, 100);
+    // Ottieni l'ID dell'utente dal server (deve essere passato dal backend)
+    let userId = "{{ user_id }}";
 
-            // Ridisegna il QR Code al ridimensionamento della finestra
-            window.addEventListener("resize", function () {
-                generateQRCode();
-            });
+    // Genera il QR Code con l'ID dell'utente
+    qrCode = new QRCode(qrContainer, {
+        text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+        width: size,
+        height: size
+    });
+}
             // Scorrimento immagini
             let currentIndex = 0;
             const images = document.querySelector(".carousel-images");
