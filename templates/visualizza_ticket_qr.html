@@ -54,27 +54,38 @@
     <h2>Reparto: <span id="reparto"></span></h2>
     <div class="ticket-number" id="numero"></div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const repartoNome = params.get("reparto");
-        const ticketNumero = params.get("numero");
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const repartoNome = params.get("reparto");
+    const ticketNumero = params.get("numero");
 
-        document.getElementById("reparto").innerText = repartoNome;
-        const ticketElement = document.getElementById("numero");
-        ticketElement.innerText = ticketNumero;
+    document.getElementById("reparto").innerText = repartoNome;
+    const ticketElement = document.getElementById("numero");
+    ticketElement.innerText = ticketNumero;
 
-        // Connessione al server WebSocket
-        var socket = io();
+    // Connessione WebSocket
+    var socket = io();
 
-        // Ascolta l'aggiornamento dei ticket chiamati
-        socket.on("update_tickets", function(numeri) {
-            console.log("🔔 Ticket aggiornati:", numeri);
-            if (numeri[repartoNome] == ticketNumero) {
-                ticketElement.classList.add("highlight");
-                setTimeout(() => ticketElement.classList.remove("highlight"), 5000);
-            }
-        });
-    </script>
+    socket.on("connect", () => {
+        console.log("✅ Connesso al server WebSocket");
+    });
+
+    socket.on("update_tickets", function(numeri) {
+        console.log("🔔 Ticket aggiornati:", numeri);
+
+        if (numeri[repartoNome] == ticketNumero) {
+            console.log("🎟 Il tuo ticket è stato chiamato!");
+            ticketElement.classList.add("highlight");
+            setTimeout(() => ticketElement.classList.remove("highlight"), 5000);
+        }
+    });
+
+    socket.on("disconnect", () => {
+        console.log("❌ Disconnesso dal server WebSocket");
+    });
+</script>
+
 
 </body>
 </html>
