@@ -202,23 +202,30 @@
         });
 
         document.addEventListener("DOMContentLoaded", function() {
-            let qrContainer = document.getElementById("qrcode");
-            let qrCode;
+    let qrContainer = document.getElementById("qrcode");
 
-            function generateQRCode() {
-    qrContainer.innerHTML = ""; // Svuota il contenitore
-    let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+    function generateQRCode() {
+        qrContainer.innerHTML = ""; // Svuota il contenitore
+        let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
 
-    // Ottieni l'ID dell'utente dal server (deve essere passato dal backend)
-    let userId = "{{ user_id }}";
+        // **Usa il valore di user_id passato dal backend**
+        let userId = "{{ user_id }}"; // Ora è definito correttamente
 
-    // Genera il QR Code con l'ID dell'utente
-    qrCode = new QRCode(qrContainer, {
-        text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-        width: size,
-        height: size
-    });
-} 
+        // **Genera il QR Code con l'ID dell'utente**
+        if (userId) {
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+        } else {
+            console.error("❌ Errore: user_id non definito.");
+        }
+    }
+
+    // Genera il QR Code dopo il caricamento della pagina
+    setTimeout(generateQRCode, 100);
+});
 
             // Scorrimento immagini
             let currentIndex = 0;
