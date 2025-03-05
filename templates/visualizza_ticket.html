@@ -70,9 +70,9 @@
         <div class="ticket-info">-------------------</div>
     </div>
 
-    <audio id="beep-sound">
-    <source src="/static/ding-126626.mp3" type="audio/wav">
-	</audio>
+<audio id="beep-sound">
+    <source src="/static/ding.mp3" type="audio/wav">
+</audio>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
@@ -87,17 +87,23 @@
     socket.on("update_tickets", function(numeri) {
         console.log("🔔 Ricevuto aggiornamento ticket:", numeri);
 
-        if (numeri[repartoNome] == numeroCorrente) {
+        // **Controlla se il ticket del cliente è stato chiamato**
+        if (numeri.hasOwnProperty(repartoNome) && numeri[repartoNome] == numeroCorrente) {
             console.log("🎟 Il tuo ticket è stato chiamato!");
 
             // **Effetto visivo**
-            ticketElement.classList.add("highlight");
-            setTimeout(() => ticketElement.classList.remove("highlight"), 3000);
+            highlightNumber(ticketElement);
 
             // **Riproduci il suono**
             playBeep();
         }
     });
+
+    function highlightNumber(element) {
+        console.log("💡 ANIMAZIONE ATTIVATA PER:", element.textContent);
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 3000);
+    }
 
     function playBeep() {
         var beep = document.getElementById("beep-sound");
@@ -108,6 +114,7 @@
         });
     }
 </script>
+
 
 
 </body>
