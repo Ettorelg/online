@@ -61,6 +61,16 @@
         .btn-avanti { background: #28a745; }
         .btn-indietro { background: #ffc107; }
         .btn-reset { background: #dc3545; }
+        .btn-imposta { background: #007bff; }
+
+        /* Input numerico */
+        .input-numero {
+            width: 80px;
+            font-size: 18px;
+            padding: 5px;
+            text-align: center;
+            margin-right: 10px;
+        }
 
         @media (max-width: 768px) {
             .button-container {
@@ -104,6 +114,9 @@
                     <button type="submit" name="azione" value="indietro" class="btn-indietro">Indietro</button>
                     <button type="submit" name="azione" value="reset" class="btn-reset">Reset</button>
                 </div>
+                <br>
+                <input type="number" name="nuovo_numero" class="input-numero" min="0" placeholder="Numero">
+                <button type="submit" name="azione" value="imposta" class="btn-imposta">Imposta</button>
             </form>
         </div>
         {% endfor %}
