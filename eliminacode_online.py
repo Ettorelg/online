@@ -594,7 +594,18 @@ def visualizza_ticket_qr():
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
     db = Database()
-    reparti = db.execute_query("SELECT id, nome FROM reparti")
+
+    # Ottieni l'ID dell'utente dal parametro dell'URL
+    user_id = request.args.get("user")
+
+    if not user_id:
+        return "Errore: nessun utente specificato nel QR code.", 400
+
+    # Recupera solo i reparti associati all'utente specificato nel QR code
+    reparti = db.execute_query("""
+        SELECT id, nome FROM reparti
+        WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s)
+    """, (user_id,))
 
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
@@ -612,7 +623,6 @@ def ritira_ticket_qr():
 
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti)
-
 
 from escpos.printer import Network
 import time
