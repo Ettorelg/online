@@ -593,8 +593,21 @@ def visualizza_ticket_qr():
 
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    user_id = session["user_id"]
     db = Database()
-    reparti = db.execute_query("SELECT id, nome FROM reparti")
+
+    # 🔹 Recupera solo i reparti assegnati all'utente
+    reparti = db.execute_query("""
+        SELECT r.id, r.nome 
+        FROM reparti r
+        INNER JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s 
+          AND l.tipo = 'eliminacode'
+          AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+    """, (user_id,))
 
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
