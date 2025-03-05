@@ -154,104 +154,100 @@
             cursor: pointer;
         }
     </style>
+<script>
+    var socket = io();
+    var selectedVoice = null;
 
-    <script>
-        var socket = io();
-        var selectedVoice = null;
+    function loadVoices() {
+        var voices = window.speechSynthesis.getVoices();
+        console.log("🔊 Voci disponibili:", voices);
 
+        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                        voices.find(v => v.name.includes("Google italiano femminile")) ||
+                        voices.find(v => v.name.includes("Alice")) ||
+                        voices.find(v => v.name.toLowerCase().includes("female")) ||
+                        voices.find(v => v.lang === "it-IT");
 
-		function loadVoices() {
-			var voices = window.speechSynthesis.getVoices();
-			console.log("🔊 Voci disponibili:", voices);
-
-			selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-							voices.find(v => v.name.includes("Google italiano femminile")) ||
-							voices.find(v => v.name.includes("Alice")) ||
-							voices.find(v => v.name.toLowerCase().includes("female")) ||
-							voices.find(v => v.lang === "it-IT");
-
-			console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
-		}
-
-        function announceNumber(number, reparto) {
-            var msg = new SpeechSynthesisUtterance("Numero " + number);
-            msg.voice = selectedVoice;
-            msg.rate = 0.7;
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
-        }
-
-        function highlightNumber(element) {
-            element.classList.add("highlight");
-            setTimeout(() => element.classList.remove("highlight"), 5000);
-        }
-
-        socket.on("update_tickets", function(numeri) {
-            for (var reparto in numeri) {
-                var ticketElement = document.getElementById("ticket-" + reparto);
-                if (ticketElement) {
-                    var oldNumber = ticketElement.innerText;
-                    ticketElement.innerText = numeri[reparto];
-
-                    if (oldNumber != numeri[reparto]) {
-                        highlightNumber(ticketElement);
-                        announceNumber(numeri[reparto], ticketElement.dataset.reparto);
-                    }
-                }
-            }
-        });
-
-       
-    document.addEventListener("DOMContentLoaded", function () {
-    let qrContainer = document.getElementById("qrcode");
-
-    function generateQRCode() {
-        qrContainer.innerHTML = ""; // Svuota il contenitore
-        let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
-
-        // 🔹 Ottieni l'ID dell'utente dal backend
-        let userId = "{{ user_id }}";
-
-        // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
-        if (!userId || userId.trim() === "") {
-            console.error("❌ Errore: user_id non è definito.");
-            return;
-        }
-
-        // 🔹 Genera il QR Code con l'ID dell'utente
-        new QRCode(qrContainer, {
-            text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-            width: size,
-            height: size
-        });
-
-        console.log("✅ QR Code generato con successo per user_id:", userId);
+        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
     }
 
-    // 🔹 Genera il QR Code dopo il caricamento della pagina
-    setTimeout(generateQRCode, 100);
-});
+    function announceNumber(number, reparto) {
+        var msg = new SpeechSynthesisUtterance("Numero " + number);
+        msg.voice = selectedVoice;
+        msg.rate = 0.7;
+        msg.pitch = 1.0;
+        window.speechSynthesis.speak(msg);
+    }
 
-            // Scorrimento immagini
-            let currentIndex = 0;
-            const images = document.querySelector(".carousel-images");
-            setInterval(() => {
-                currentIndex = (currentIndex + 1) % images.children.length;
-                images.style.transform = `translateX(-${currentIndex * 100}%)`;
-            }, 3000);
-        
-            window.speechSynthesis.onvoiceschanged = loadVoices;
-            setTimeout(loadVoices, 500);
-        });
+    function highlightNumber(element) {
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 5000);
+    }
 
-        function testVoice() {
-            var msg = new SpeechSynthesisUtterance("Audio attivato");
-            msg.voice = selectedVoice;
-            msg.rate = 0.6;
-            msg.pitch = 1.2;
-            window.speechSynthesis.speak(msg);
+    socket.on("update_tickets", function(numeri) {
+        for (var reparto in numeri) {
+            var ticketElement = document.getElementById("ticket-" + reparto);
+            if (ticketElement) {
+                var oldNumber = ticketElement.innerText;
+                ticketElement.innerText = numeri[reparto];
+
+                if (oldNumber != numeri[reparto]) {
+                    highlightNumber(ticketElement);
+                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                }
+            }
         }
-    </script>
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let qrContainer = document.getElementById("qrcode");
+
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+
+            // 🔹 Ottieni l'ID dell'utente dal backend
+            let userId = "{{ user_id }}";
+
+            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code con l'ID dell'utente
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+
+            console.log("✅ QR Code generato con successo per user_id:", userId);
+        }
+
+        // 🔹 Genera il QR Code dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+
+        // Scorrimento immagini
+        let currentIndex = 0;
+        const images = document.querySelector(".carousel-images");
+        setInterval(() => {
+            currentIndex = (currentIndex + 1) % images.children.length;
+            images.style.transform = `translateX(-${currentIndex * 100}%)`;
+        }, 3000);
+
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        setTimeout(loadVoices, 500);
+    });
+
+    function testVoice() {
+        var msg = new SpeechSynthesisUtterance("Audio attivato");
+        msg.voice = selectedVoice;
+        msg.rate = 0.6;
+        msg.pitch = 1.2;
+        window.speechSynthesis.speak(msg);
+    }
+</script>
 </head>
 <body>
 
