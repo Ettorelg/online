@@ -201,31 +201,39 @@
             }
         });
 
-        document.addEventListener("DOMContentLoaded", function() {
-    let qrContainer = document.getElementById("qrcode");
+       
+    document.addEventListener("DOMContentLoaded", function() {
+        let qrContainer = document.getElementById("qrcode");
 
-    function generateQRCode() {
-        qrContainer.innerHTML = ""; // Svuota il contenitore
-        let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
 
-        // **Usa il valore di user_id passato dal backend**
-        let userId = "{{ user_id }}"; // Ora è definito correttamente
+            // 🔹 Recupera il valore di user_id dal backend
+            let userId = "{{ user_id }}";
 
-        // **Genera il QR Code con l'ID dell'utente**
-        if (userId) {
+            // 🔹 Debug: stampa user_id nella console
+            console.log("🔍 Valore di user_id ricevuto:", userId);
+
+            // Se userId è vuoto o undefined, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code
             new QRCode(qrContainer, {
                 text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
                 width: size,
                 height: size
             });
-        } else {
-            console.error("❌ Errore: user_id non definito.");
-        }
-    }
 
-    // Genera il QR Code dopo il caricamento della pagina
-    setTimeout(generateQRCode, 100);
-});
+            console.log("✅ QR Code generato correttamente.");
+        }
+
+        // 🔹 Esegui la generazione dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+    });
 
             // Scorrimento immagini
             let currentIndex = 0;
