@@ -508,14 +508,15 @@ def aggiorna_ticket():
     for reparto_id, numero in numeri_chiamati:
         reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
         if reparto_nome_result:
-            reparto_nome = reparto_nome_result[0][0]  # Converte ID in nome
-            numeri_formattati[reparto_nome] = numero  # Usa il nome come chiave
+            reparto_nome = reparto_nome_result[0][0]
+            numeri_formattati[reparto_nome] = numero  # Usa il nome del reparto come chiave
 
-    # 🔔 Invia aggiornamento ai client con i nomi corretti
-    print("📢 INVIO AGGIORNAMENTO TICKET:", numeri_formattati)
-    socketio.emit("update_tickets", numeri_formattati)
+            # **Invia il segnale specifico per il reparto**
+            socketio.emit(f"update_ticket_{reparto_nome}", numero)
 
     db.close()
+    print("📢 INVIO AGGIORNAMENTO CORRETTO:", numeri_formattati)  # Debug importante
+    socketio.emit("update_tickets", numeri_formattati)
     return "OK", 200
 
 
