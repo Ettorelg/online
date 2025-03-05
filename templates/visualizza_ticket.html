@@ -81,29 +81,27 @@
     var repartoNome = document.getElementById("reparto-nome").innerText.trim();
     var numeroCorrente = parseInt(ticketElement.textContent);
 
-    console.log("🟢 WebSocket Connesso - Reparto:", repartoNome, "Numero Ticket:", numeroCorrente);
+    // 🔹 Recupera l'ID del reparto dall'attributo data
+    var repartoID = "{{ reparto_id }}"; // Deve essere passato dal backend!
+
+    console.log("🟢 WebSocket Connesso - Reparto:", repartoNome, "ID:", repartoID, "Numero Ticket:", numeroCorrente);
 
     // **Ascolta gli aggiornamenti generici dei ticket**
     socket.on("update_tickets", function(numeri) {
         console.log("🔔 Ricevuto aggiornamento ticket:", numeri);
 
-        // **Controlla se il ticket del cliente è stato chiamato**
-        if (numeri.hasOwnProperty(repartoNome) && numeri[repartoNome] == numeroCorrente) {
+        // 🔎 Confronta l'ID del reparto con i dati ricevuti
+        if (numeri[repartoID] == numeroCorrente) {
             console.log("🎟 Il tuo ticket è stato chiamato!");
 
             // **Effetto visivo**
-            highlightNumber(ticketElement);
+            ticketElement.classList.add("highlight");
+            setTimeout(() => ticketElement.classList.remove("highlight"), 3000);
 
             // **Riproduci il suono**
             playBeep();
         }
     });
-
-    function highlightNumber(element) {
-        console.log("💡 ANIMAZIONE ATTIVATA PER:", element.textContent);
-        element.classList.add("highlight");
-        setTimeout(() => element.classList.remove("highlight"), 3000);
-    }
 
     function playBeep() {
         var beep = document.getElementById("beep-sound");
