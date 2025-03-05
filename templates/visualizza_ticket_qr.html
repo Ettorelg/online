@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Il tuo Ticket</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,6 +17,7 @@
             align-items: center;
             flex-direction: column;
         }
+
         .ticket-number {
             font-size: 120px;
             font-weight: bold;
@@ -27,6 +29,22 @@
             width: 260px;
             text-align: center;
             margin-top: 20px;
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+
+        .highlight {
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                background-color: #ffcc00;
+            }
+            to {
+                transform: scale(1.2);
+                background-color: #ff3300;
+            }
         }
     </style>
 </head>
@@ -37,10 +55,25 @@
     <div class="ticket-number" id="numero"></div>
 
     <script>
-        // Estrai i parametri dal link
         const params = new URLSearchParams(window.location.search);
-        document.getElementById("reparto").innerText = params.get("reparto");
-        document.getElementById("numero").innerText = params.get("numero");
+        const repartoNome = params.get("reparto");
+        const ticketNumero = params.get("numero");
+
+        document.getElementById("reparto").innerText = repartoNome;
+        const ticketElement = document.getElementById("numero");
+        ticketElement.innerText = ticketNumero;
+
+        // Connessione al server WebSocket
+        var socket = io();
+
+        // Ascolta l'aggiornamento dei ticket chiamati
+        socket.on("update_tickets", function(numeri) {
+            console.log("🔔 Ticket aggiornati:", numeri);
+            if (numeri[repartoNome] == ticketNumero) {
+                ticketElement.classList.add("highlight");
+                setTimeout(() => ticketElement.classList.remove("highlight"), 5000);
+            }
+        });
     </script>
 
 </body>
