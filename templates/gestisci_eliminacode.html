@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Eliminacode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2, h3 {
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        input, select, button {
+            width: 90%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            transition: 0.3s ease-in-out;
+        }
+
+        button:hover {
+            background: #218838;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
+        .section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            input, select, button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Gestione Eliminacode</h2>
+
+        <!-- Aggiunta Reparto -->
+        <div class="section">
+            <h3>Aggiungi Reparto</h3>
+            <form method="POST">
+                <input type="text" name="nuovo_reparto" placeholder="Nome Reparto" required>
+                <input type="text" name="ip_reparto" placeholder="Indirizzo IP" required>
+                <button type="submit" name="azione" value="aggiungi_reparto">Aggiungi Reparto</button>
+            </form>
+        </div>
+
+        <!-- Lista Reparti -->
+        <div class="section">
+            <h3>Reparti Esistenti</h3>
+            <table>
+                <tr>
+                    <th>Reparto</th>
+                    <th>Indirizzo IP</th>
+                    <th>Azioni</th>
+                </tr>
+                {% for reparto_id, reparto_nome, ip_address in reparti %}
+                <tr>
+                    <td>{{ reparto_nome }}</td>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+                            <input type="text" name="nuovo_ip" value="{{ ip_address }}" placeholder="Modifica IP">
+                            <button type="submit" name="azione" value="modifica_ip">Salva</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
+                            <button type="submit" class="btn-delete" name="azione" value="elimina_reparto">Elimina</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Gestione Fila/Code -->
+        <div class="section">
+            <h3>Gestisci Code per Reparto</h3>
+            {% for reparto_id, reparto_nome, ip_address in reparti %}
+            <h4>{{ reparto_nome }}</h4>
+            <table>
+                <tr>
+                    <th>Fila</th>
+                    <th>Azioni</th>
+                </tr>
+                {% for fila_id, fila_nome in file_reparto[reparto_id] %}
+                <tr>
+                    <td>{{ fila_nome }}</td>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="elimina_file" value="{{ fila_id }}">
+                            <button type="submit" class="btn-delete" name="azione" value="elimina_fila">Elimina</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+
+            <form method="POST">
+                <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+                <input type="text" name="nuova_fila" placeholder="Nome Fila" required>
+                <button type="submit" name="azione" value="aggiungi_fila">Aggiungi Fila</button>
+            </form>
+            {% endfor %}
+        </div>
+
+        <br>
+        <a href="/gestisci_licenze/{{ user_id }}">Torna alla gestione licenze</a>
+    </div>
+
+</body>
+</html>

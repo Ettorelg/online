@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Prenotazioni</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f9f9f9; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+        input, button { margin: 5px; padding: 10px; font-size: 16px; width: 80%; }
+        .prenotazione { background: #eee; padding: 10px; margin: 5px 0; border-radius: 5px; }
+    </style>
+    <script>
+        var socket = io();
+        socket.on("update_prenotazioni", function() {
+            location.reload(); // Ricarica la pagina quando ci sono aggiornamenti
+        });
+
+        function aggiungiPrenotazione() {
+            let nomeCliente = document.getElementById("nome_cliente").value;
+            let orario = document.getElementById("orario").value;
+            
+            fetch("/gestione_prenotazioni", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `nome_cliente=${nomeCliente}&orario=${orario}`
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) location.reload();
+            });
+        }
+    </script>
+</head>
+<body>
+
+    <h2>Gestione Prenotazioni</h2>
+    <div class="container">
+        <input type="text" id="nome_cliente" placeholder="Nome Cliente">
+        <input type="datetime-local" id="orario">
+        <button onclick="aggiungiPrenotazione()">Aggiungi Prenotazione</button>
+        
+        <h3>Prenotazioni Attuali</h3>
+        {% for prenotazione in prenotazioni %}
+        <div class="prenotazione">
+            <strong>{{ prenotazione[1] }}</strong> - {{ prenotazione[2] }} - <em>{{ prenotazione[3] }}</em>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>

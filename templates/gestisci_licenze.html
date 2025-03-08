@@ -4,123 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestisci Licenze</title>
-    <script>
-        function aggiornaScadenza(checkbox, licenza) {
-            let scadenzaInput = document.getElementById("scadenza_" + licenza);
-            if (checkbox.checked) {
-                let oggi = new Date();
-                oggi.setFullYear(oggi.getFullYear() + 1);
-                let dataScadenza = oggi.toISOString().split("T")[0];
-                scadenzaInput.value = dataScadenza;
-                scadenzaInput.disabled = false;
-            } else {
-                scadenzaInput.value = "";
-                scadenzaInput.disabled = true;
-            }
-        }
-    </script>
+<style>
+    .licenze-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .licenza-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s ease-in-out;
+    }
+    .licenza-btn:hover {
+        background: #0056b3;
+    }
+</style>
+
 </head>
 <body>
 
-    <h2>Gestione Licenze</h2>
+    <div class="container">
+        <h2>Gestione Licenze</h2>
 
-    <!-- Form per gestire le licenze -->
-    <form method="POST">
-        <!-- Campo nascosto per indicare che questo form aggiorna le licenze -->
-        <input type="hidden" name="update_licenze" value="1">
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>Licenza</th>
-                    <th>Attiva</th>
-                    <th>Data Scadenza</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for licenza in licenze_disponibili %}
+        <!-- Form per gestire le licenze -->
+        <form method="POST">
+            <input type="hidden" name="update_licenze" value="1">
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ licenza }}</td>
-                        <td>
-                            <input type="checkbox" name="licenze" value="{{ licenza }}" id="checkbox_{{ licenza }}"
-                                {% if licenza in licenze_attuali %}checked{% endif %}
-                                onclick="aggiornaScadenza(this, '{{ licenza }}')">
-                        </td>
-                        <td>
-                            <input type="date" name="scadenza_{{ licenza }}" id="scadenza_{{ licenza }}"
-                                {% if licenza in licenze_attuali %}
-                                    value="{{ licenze_attuali[licenza] }}"
-                                {% else %}
-                                    disabled
-                                {% endif %}>
-                        </td>
+                        <th>Licenza</th>
+                        <th>Attiva</th>
+                        <th>Data Scadenza</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button type="submit">Salva Modifiche</button>
-    </form>
+                </thead>
+                <tbody>
+                    {% for licenza in licenze_disponibili %}
+                        <tr>
+                            <td>{{ licenza }}</td>
+                            <td>
+                                <input type="checkbox" name="licenze" value="{{ licenza }}" 
+                                    {% if licenza in licenze_attuali %}checked{% endif %}>
+                            </td>
+                            <td>
+                                <input type="date" name="scadenza_{{ licenza }}" 
+                                    {% if licenza in licenze_attuali %}
+                                        value="{{ licenze_attuali[licenza] }}"
+                                    {% else %}
+                                        disabled
+                                    {% endif %}>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit">Salva Modifiche</button>
+        </form>
+<h3>Licenze Attive</h3>
+<div class="licenze-container">
+    {% for licenza in licenze_attuali %}
+        <form method="GET" action="/gestisci_{{ licenza }}/{{ user_id }}">
+            <button type="submit" class="licenza-btn">{{ licenza | capitalize }}</button>
+        </form>
+    {% endfor %}
+</div>
 
-    {% if "eliminacode" in licenze_attuali %}
-    <h3>Gestisci Reparti e File</h3>
-
-<form method="POST">
-    <label for="nuovo_reparto">Aggiungi Reparto:</label>
-    <input type="text" id="nuovo_reparto" name="nuovo_reparto" required>
-    <label for="ip_reparto">Indirizzo IP:</label>
-    <input type="text" id="ip_reparto" name="ip_reparto" placeholder="192.168.1.1">
-    <button type="submit">Aggiungi</button>
-</form>
-
-
-    <h4>Reparti Esistenti</h4>
-	<table border="1">
-		<tr>
-			<th>Reparto</th>
-			<th>Indirizzo IP</th>
-			<th>File (Code)</th>
-			<th>Azioni</th>
-		</tr>
-		{% for reparto_id, reparto_nome, ip_address in reparti %}
-		<tr>
-			<td>{{ reparto_nome }}</td>
-			<td>
-				<form method="POST">
-					<input type="hidden" name="reparto_id" value="{{ reparto_id }}">
-					<input type="text" name="nuovo_ip" value="{{ ip_address }}" placeholder="Modifica IP">
-					<button type="submit" name="modifica_ip_reparto">Salva</button>
-				</form>
-			</td>
-			<td>
-				<ul>
-					{% for fila_id, fila_nome in file_reparto[reparto_id] %}
-					<li>{{ fila_nome }}
-						<form method="POST" style="display:inline;">
-							<input type="hidden" name="elimina_file" value="{{ fila_id }}">
-							<button type="submit">X</button>
-						</form>
-					</li>
-					{% endfor %}
-				</ul>
-				<form method="POST">
-					<input type="hidden" name="reparto_id" value="{{ reparto_id }}">
-					<input type="text" name="nuova_fila" placeholder="Nuova fila" required>
-					<button type="submit">Aggiungi Fila</button>
-				</form>
-			</td>
-			<td>
-				<form method="POST">
-					<input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
-					<button type="submit">Elimina Reparto</button>
-				</form>
-			</td>
-		</tr>
-		{% endfor %}
-	</table>
-
-    {% endif %}
-
-    <br>
-    <a href="/dashboard_admin">Torna alla Dashboard</a>
+        <br>
+        <a href="/dashboard_admin">Torna alla Dashboard</a>
+    </div>
 
 </body>
 </html>

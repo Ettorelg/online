@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Prenotazioni</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			text-align: center;
+			background: #f4f4f4;
+			margin: 0;
+			padding: 10px;
+		}
+
+		.container {
+			max-width: 850px;
+			margin: auto;
+			background: white;
+			padding: 15px;
+			border-radius: 10px;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		h2, h3 {
+			color: #333;
+			margin-bottom: 10px;
+			font-size: 18px;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 10px;
+			font-size: 14px;
+		}
+
+		th, td {
+			padding: 8px;
+			text-align: center;
+			border: 1px solid #ddd;
+		}
+
+		th {
+			background: #007bff;
+			color: white;
+		}
+
+		input, select, button {
+			width: 95%;
+			padding: 6px;
+			margin: 3px 0;
+			border: 1px solid #ddd;
+			border-radius: 5px;
+			font-size: 14px;
+		}
+
+		button {
+			background: #28a745;
+			color: white;
+			border: none;
+			cursor: pointer;
+			padding: 6px;
+			transition: 0.3s ease-in-out;
+			font-size: 14px;
+		}
+
+		button:hover {
+			background: #218838;
+		}
+
+		.btn-delete {
+			background: #dc3545;
+			padding: 4px;
+			font-size: 12px;
+		}
+
+		.btn-delete:hover {
+			background: #c82333;
+		}
+
+		.btn-edit {
+			background: #ffc107;
+			color: black;
+			padding: 4px;
+			font-size: 12px;
+		}
+
+		.btn-edit:hover {
+			background: #e0a800;
+		}
+
+		.section {
+			margin-top: 15px;
+			padding: 10px;
+			background: #f9f9f9;
+			border-radius: 8px;
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		}
+
+		form {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 5px;
+			justify-content: center;
+		}
+
+		@media (max-width: 768px) {
+			input, select, button {
+				width: 100%;
+			}
+
+			th, td {
+				font-size: 12px;
+				padding: 6px;
+			}
+
+			button {
+				padding: 5px;
+				font-size: 12px;
+			}
+
+			.container {
+				padding: 10px;
+			}
+
+			.section {
+				padding: 8px;
+			}
+		}
+	</style>
+
+</head>
+<body>
+
+    <div class="container">
+        <h2>Gestione Prenotazioni</h2>
+
+        <!-- Gestione Categorie -->
+        <div class="section">
+            <h3>Categorie</h3>
+            <form method="POST">
+                <input type="text" name="nome_categoria" placeholder="Nome Categoria" required>
+                <button type="submit" name="azione" value="aggiungi_categoria">Aggiungi</button>
+            </form>
+            <table>
+                <tr>
+                    <th>Nome</th>
+                    <th>Azioni</th>
+                </tr>
+                {% for categoria_id, categoria_nome in categorie %}
+                <tr>
+                    <td>{{ categoria_nome }}</td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="categoria_id" value="{{ categoria_id }}">
+                            <input type="text" name="nuovo_nome" placeholder="Modifica Nome">
+                            <button type="submit" class="btn-edit" name="azione" value="modifica_categoria">Salva</button>
+                            <button type="submit" class="btn-delete" name="azione" value="elimina_categoria">X</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Gestione Servizi -->
+        <div class="section">
+            <h3>Servizi</h3>
+            <form method="POST">
+                <input type="text" name="nome_servizio" placeholder="Nome Servizio" required>
+                <input type="number" name="tempo_servizio" placeholder="Durata (minuti)" required>
+                <input type="number" step="0.01" name="costo_servizio" placeholder="Costo (€)" required>
+                <select name="categoria_id" required>
+                    <option value="">Seleziona Categoria</option>
+                    {% for categoria_id, categoria_nome in categorie %}
+                    <option value="{{ categoria_id }}">{{ categoria_nome }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" name="azione" value="aggiungi_servizio">Aggiungi</button>
+            </form>
+            <table>
+                <tr>
+                    <th>Nome</th>
+                    <th>Durata</th>
+                    <th>Costo</th>
+                    <th>Azioni</th>
+                </tr>
+                {% for servizio_id, servizio_nome, durata, costo, categoria_nome in servizi %}
+                <tr>
+                    <td>{{ servizio_nome }}</td>
+                    <td>{{ durata }} min</td>
+                    <td>{{ costo }} €</td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="servizio_id" value="{{ servizio_id }}">
+                            <input type="text" name="nuovo_nome" placeholder="Modifica Nome">
+                            <input type="number" name="nuova_durata" placeholder="Durata">
+                            <input type="number" step="0.01" name="nuovo_costo" placeholder="Costo">
+                            <button type="submit" class="btn-edit" name="azione" value="modifica_servizio">Salva</button>
+                            <button type="submit" class="btn-delete" name="azione" value="elimina_servizio">X</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Gestione Prenotazioni -->
+        <div class="section">
+            <h3>Prenotazioni</h3>
+            <table>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Servizio</th>
+                    <th>Personale</th>
+                    <th>Orario</th>
+                    <th>Azioni</th>
+                </tr>
+                {% for prenotazione_id, cliente_nome, servizio_nome, personale_nome, orario in prenotazioni %}
+                <tr>
+                    <td>{{ cliente_nome }}</td>
+                    <td>{{ servizio_nome }}</td>
+                    <td>{{ personale_nome }}</td>
+                    <td>{{ orario }}</td>
+                    <td>
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="prenotazione_id" value="{{ prenotazione_id }}">
+                            <input type="text" name="nuovo_cliente" placeholder="Modifica Cliente">
+                            <input type="text" name="nuovo_servizio" placeholder="Nuovo Servizio">
+                            <input type="text" name="nuovo_personale" placeholder="Nuovo Personale">
+                            <input type="datetime-local" name="nuovo_orario">
+                            <button type="submit" class="btn-edit" name="azione" value="modifica_prenotazione">Salva</button>
+                            <button type="submit" class="btn-delete" name="azione" value="elimina_prenotazione">X</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <br>
+        <a href="/gestisci_licenze/{{ user_id }}">Torna alla gestione licenze</a>
+    </div>
+
+</body>
+</html>
