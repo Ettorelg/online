@@ -500,8 +500,46 @@ def gestisci_prenotazioni(user_id):
 
         elif azione == "modifica_categoria":
             categoria_id = request.form.get("categoria_id")
-            nuovo_nome = request.form.get("nuovo_nome").strip()
-            db.execute_query("UPDATE categorie SET nome = %s WHERE id = %s", (nuovo_nome, categoria_id), commit=True)
+            nuovo_nome = request.form.get("nuovo_nome", "").strip()
+
+            result = db.execute_query("SELECT nome FROM categorie WHERE id = %s", (categoria_id,))
+            if result:
+                nome_attuale = result[0][0]
+                nuovo_nome = nuovo_nome if nuovo_nome else nome_attuale
+
+                db.execute_query("UPDATE categorie SET nome = %s WHERE id = %s", (nuovo_nome, categoria_id), commit=True)
+
+        elif azione == "modifica_personale":
+            personale_id = request.form.get("personale_id")
+            nuovo_nome = request.form.get("nuovo_nome", "").strip()
+
+            result = db.execute_query("SELECT nome FROM personale WHERE id = %s", (personale_id,))
+            if result:
+                nome_attuale = result[0][0]
+                nuovo_nome = nuovo_nome if nuovo_nome else nome_attuale
+
+                db.execute_query("UPDATE personale SET nome = %s WHERE id = %s", (nuovo_nome, personale_id), commit=True)
+
+        elif azione == "modifica_prenotazione":
+            prenotazione_id = request.form.get("prenotazione_id")
+            nuovo_cliente = request.form.get("nuovo_cliente", "").strip()
+            nuovo_servizio = request.form.get("nuovo_servizio", "").strip()
+            nuovo_personale = request.form.get("nuovo_personale", "").strip()
+            nuovo_orario = request.form.get("nuovo_orario", "").strip()
+
+            result = db.execute_query("SELECT nome_cliente, id_servizio, id_personale, orario FROM prenotazioni WHERE id = %s", (prenotazione_id,))
+            if result:
+                cliente_attuale, servizio_attuale, personale_attuale, orario_attuale = result[0]
+
+                nuovo_cliente = nuovo_cliente if nuovo_cliente else cliente_attuale
+                nuovo_servizio = int(nuovo_servizio) if nuovo_servizio.isdigit() else servizio_attuale
+                nuovo_personale = int(nuovo_personale) if nuovo_personale.isdigit() else personale_attuale
+                nuovo_orario = nuovo_orario if nuovo_orario else orario_attuale
+
+                db.execute_query(
+                    "UPDATE prenotazioni SET nome_cliente = %s, id_servizio = %s, id_personale = %s, orario = %s WHERE id = %s",
+                    (nuovo_cliente, nuovo_servizio, nuovo_personale, nuovo_orario, prenotazione_id), commit=True
+                )
 
         elif azione == "elimina_categoria":
             categoria_id = request.form.get("categoria_id")
@@ -522,12 +560,25 @@ def gestisci_prenotazioni(user_id):
 
         elif azione == "modifica_servizio":
             servizio_id = request.form.get("servizio_id")
-            nuovo_nome = request.form.get("nuovo_nome").strip()
-            nuova_durata = request.form.get("nuova_durata")
-            nuovo_costo = request.form.get("nuovo_costo")
+            nuovo_nome = request.form.get("nuovo_nome", "").strip()
+            nuova_durata = request.form.get("nuova_durata", "").strip()
+            nuovo_costo = request.form.get("nuovo_costo", "").strip()
 
-            db.execute_query("UPDATE servizi SET nome = %s, durata = %s, costo = %s WHERE id = %s",
-                             (nuovo_nome, int(nuova_durata), float(nuovo_costo), servizio_id), commit=True)
+            # Recupera i valori attuali dal database
+            result = db.execute_query("SELECT nome, durata, costo FROM servizi WHERE id = %s", (servizio_id,))
+            if result:
+                nome_attuale, durata_attuale, costo_attuale = result[0]
+
+                # Mantieni il valore attuale se il campo è vuoto
+                nuovo_nome = nuovo_nome if nuovo_nome else nome_attuale
+                nuova_durata = int(nuova_durata) if nuova_durata.isdigit() else durata_attuale
+                nuovo_costo = float(nuovo_costo) if nuovo_costo.replace('.', '', 1).isdigit() else costo_attuale
+
+                # Esegui l'aggiornamento solo se qualcosa è cambiato
+                db.execute_query(
+                    "UPDATE servizi SET nome = %s, durata = %s, costo = %s WHERE id = %s",
+                    (nuovo_nome, nuova_durata, nuovo_costo, servizio_id), commit=True
+                )
 
         elif azione == "elimina_servizio":
             servizio_id = request.form.get("servizio_id")
@@ -542,10 +593,6 @@ def gestisci_prenotazioni(user_id):
                     (nome_personale, user_id), commit=True
                 )
 
-        elif azione == "modifica_personale":
-            personale_id = request.form.get("personale_id")
-            nuovo_nome = request.form.get("nuovo_nome").strip()
-            db.execute_query("UPDATE personale SET nome = %s WHERE id = %s", (nuovo_nome, personale_id), commit=True)
 
         elif azione == "elimina_personale":
             personale_id = request.form.get("personale_id")
@@ -564,17 +611,6 @@ def gestisci_prenotazioni(user_id):
                     (cliente_nome, servizio_id, personale_id, orario), commit=True
                 )
 
-        elif azione == "modifica_prenotazione":
-            prenotazione_id = request.form.get("prenotazione_id")
-            nuovo_cliente = request.form.get("nuovo_cliente").strip()
-            nuovo_servizio = request.form.get("nuovo_servizio")
-            nuovo_personale = request.form.get("nuovo_personale")
-            nuovo_orario = request.form.get("nuovo_orario")
-
-            db.execute_query(
-                "UPDATE prenotazioni SET nome_cliente = %s, id_servizio = %s, id_personale = %s, orario = %s WHERE id = %s",
-                (nuovo_cliente, nuovo_servizio, nuovo_personale, nuovo_orario, prenotazione_id), commit=True
-            )
 
         elif azione == "elimina_prenotazione":
             prenotazione_id = request.form.get("prenotazione_id")
