@@ -5,6 +5,9 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 from escpos.printer import Network
 
 
+
+
+
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 socketio = SocketIO(app)
@@ -129,9 +132,56 @@ class Database:
             )
         ''')
         
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS categorie (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
+            )
+        ''')
 
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS servizi (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                durata INTEGER NOT NULL,
+                costo DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+                id_categoria INTEGER REFERENCES categorie(id) ON DELETE CASCADE
+            )
+        ''')
+        
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS personale (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                orario_inizio TIME NOT NULL DEFAULT '09:00',
+                orario_fine TIME NOT NULL DEFAULT '18:00',
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
+            )
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS personale_servizi (
+                id_personale INTEGER REFERENCES personale(id) ON DELETE CASCADE,
+                id_servizio INTEGER REFERENCES servizi(id) ON DELETE CASCADE,
+                PRIMARY KEY (id_personale, id_servizio)
+            )
+        ''')
+
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS prenotazioni (
+                id SERIAL PRIMARY KEY,
+                nome_cliente TEXT NOT NULL,
+                id_servizio INTEGER REFERENCES servizi(id) ON DELETE CASCADE,
+                id_personale INTEGER REFERENCES personale(id) ON DELETE CASCADE,
+                orario TIMESTAMP NOT NULL
+            )
+        ''')
 
         self.conn.commit()
+
+
 
     def close(self):
         self.cursor.close()
@@ -295,107 +345,276 @@ def gestisci_licenze(user_id):
     licenze_attuali = db.get_licenze_utente(user_id)
 
     if request.method == "POST":
+        azione = request.form.get("azione")
+
         # Gestione delle licenze
         if "update_licenze" in request.form:
             licenze_selezionate = request.form.getlist("licenze")
-
-            # Rimuove le licenze non più selezionate
             for licenza in list(licenze_attuali.keys()):
                 if licenza not in licenze_selezionate:
-                    db.execute_query(
-                        "DELETE FROM licenze WHERE id_utente = %s AND tipo = %s", 
-                        (user_id, licenza), commit=True
-                    )
+                    db.execute_query("DELETE FROM licenze WHERE id_utente = %s AND tipo = %s", (user_id, licenza), commit=True)
                     del licenze_attuali[licenza]
 
-            # Aggiunge le nuove licenze non presenti
             for licenza in licenze_selezionate:
                 if licenza not in licenze_attuali:
                     scadenza = (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d")
-                    db.execute_query(
-                        "INSERT INTO licenze (id_utente, tipo, data_scadenza) VALUES (%s, %s, %s)",
-                        (user_id, licenza, scadenza), commit=True
-                    )
+                    db.execute_query("INSERT INTO licenze (id_utente, tipo, data_scadenza) VALUES (%s, %s, %s)", (user_id, licenza, scadenza), commit=True)
                     licenze_attuali[licenza] = scadenza
 
-            # Aggiorna le scadenze se modificate
             for licenza in licenze_attuali:
                 if f"scadenza_{licenza}" in request.form:
                     nuova_scadenza = request.form[f"scadenza_{licenza}"]
-                    db.execute_query(
-                        "UPDATE licenze SET data_scadenza = %s WHERE id_utente = %s AND tipo = %s",
-                        (nuova_scadenza, user_id, licenza), commit=True
-                    )
-                    licenze_attuali[licenza] = nuova_scadenza
+                    db.execute_query("UPDATE licenze SET data_scadenza = %s WHERE id_utente = %s AND tipo = %s", (nuova_scadenza, user_id, licenza), commit=True)
 
-        # Aggiunta di un nuovo reparto con indirizzo IP
-        elif "nuovo_reparto" in request.form:
-            if "eliminacode" in licenze_attuali:
-                licenza_id_result = db.execute_query(
-                    "SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'",
-                    (user_id,)
-                )
-                if licenza_id_result:
-                    nuovo_reparto = request.form["nuovo_reparto"].strip()
-                    ip_address = request.form.get("ip_reparto", "").strip()
+        # Gestione categorie
+        elif azione == "aggiungi_categoria":
+            nome_categoria = request.form.get("nome_categoria").strip()
+            if nome_categoria:
+                db.execute_query("INSERT INTO categorie (nome, id_licenza) VALUES (%s, (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'))", 
+                                 (nome_categoria, user_id), commit=True)
 
-                    db.execute_query(
-                        "INSERT INTO reparti (nome, ip_address, id_licenza) VALUES (%s, %s, %s)",
-                        (nuovo_reparto, ip_address, licenza_id_result[0][0]), commit=True
-                    )
+        elif azione == "elimina_categoria":
+            categoria_id = request.form.get("categoria_id")
+            db.execute_query("DELETE FROM categorie WHERE id = %s", (categoria_id,), commit=True)
 
-        # Eliminazione di un reparto
-        elif "elimina_reparto" in request.form:
-            reparto_id = request.form["elimina_reparto"]
-            db.execute_query("DELETE FROM reparti WHERE id = %s", (reparto_id,), commit=True)
+        # Gestione servizi
+        elif azione == "aggiungi_servizio":
+            nome_servizio = request.form.get("nome_servizio").strip()
+            tempo_servizio = request.form.get("tempo_servizio")
+            categoria_id = request.form.get("categoria_id")
+            if nome_servizio and tempo_servizio.isdigit() and categoria_id:
+                db.execute_query("INSERT INTO servizi (nome, durata, id_categoria) VALUES (%s, %s, %s)", 
+                                 (nome_servizio, int(tempo_servizio), categoria_id), commit=True)
 
-        # Modifica dell'IP di un reparto esistente
-        elif "modifica_ip_reparto" in request.form:
-            reparto_id = request.form.get("reparto_id")
-            nuovo_ip = request.form.get("nuovo_ip", "").strip()
-            if reparto_id and nuovo_ip:
-                db.execute_query(
-                    "UPDATE reparti SET ip_address = %s WHERE id = %s",
-                    (nuovo_ip, reparto_id), commit=True
-                )
+        elif azione == "elimina_servizio":
+            servizio_id = request.form.get("servizio_id")
+            db.execute_query("DELETE FROM servizi WHERE id = %s", (servizio_id,), commit=True)
 
-        # Aggiunta di una fila al reparto
-        elif "nuova_fila" in request.form:
-            reparto_id = request.form.get("reparto_id")
-            nuova_fila = request.form.get("nuova_fila").strip()
-            if nuova_fila and reparto_id:
-                db.execute_query(
-                    "INSERT INTO file_reparto (nome, id_reparto) VALUES (%s, %s)",
-                    (nuova_fila, reparto_id), commit=True
-                )
+        # Gestione personale
+        elif azione == "aggiungi_personale":
+            nome_personale = request.form.get("nome_personale").strip()
+            if nome_personale:
+                db.execute_query("INSERT INTO personale (nome, id_licenza) VALUES (%s, (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'))", 
+                                 (nome_personale, user_id), commit=True)
 
-        # Eliminazione di una fila
-        elif "elimina_file" in request.form:
-            file_id = request.form["elimina_file"]
-            db.execute_query("DELETE FROM file_reparto WHERE id = %s", (file_id,), commit=True)
+        elif azione == "elimina_personale":
+            personale_id = request.form.get("personale_id")
+            db.execute_query("DELETE FROM personale WHERE id = %s", (personale_id,), commit=True)
 
-        db.conn.commit()
+        # Gestione prenotazioni
+        elif azione == "aggiungi_prenotazione":
+            cliente_nome = request.form.get("cliente_nome").strip()
+            servizio_id = request.form.get("servizio_id")
+            personale_id = request.form.get("personale_id")
+            orario = request.form.get("orario")
+
+            if cliente_nome and servizio_id and personale_id and orario:
+                db.execute_query("INSERT INTO prenotazioni (nome_cliente, id_servizio, id_personale, orario) VALUES (%s, %s, %s, %s)", 
+                                 (cliente_nome, servizio_id, personale_id, orario), commit=True)
+
+        elif azione == "elimina_prenotazione":
+            prenotazione_id = request.form.get("prenotazione_id")
+            db.execute_query("DELETE FROM prenotazioni WHERE id = %s", (prenotazione_id,), commit=True)
+
         db.close()
         return redirect(f"/gestisci_licenze/{user_id}")
 
-    # Recupero dati reparti e file associati
-    reparti = []
-    file_reparto = {}
-    if "eliminacode" in licenze_attuali:
-        reparti = db.execute_query(
-            "SELECT id, nome, ip_address FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
-            (user_id,)
-        )
-        for reparto_id, reparto_nome, ip_address in reparti:
-            file_reparto[reparto_id] = db.execute_query(
-                "SELECT id, nome FROM file_reparto WHERE id_reparto = %s",
-                (reparto_id,)
-            )
+    # Recupero dati per la visualizzazione
+    categorie, servizi, personale, prenotazioni = [], [], [], []
+    if "prenotazioni" in licenze_attuali:
+        categorie = db.execute_query( "SELECT id, nome FROM categorie WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')", (user_id,))
+        servizi = db.execute_query(
+            "SELECT s.id, s.nome, s.durata, COALESCE(s.costo, 0.00), c.nome "
+            "FROM servizi s "
+            "JOIN categorie c ON s.id_categoria = c.id "
+            "WHERE c.id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')",(user_id,))
+        personale = db.execute_query("SELECT id, nome FROM personale WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')",(user_id,))
+        prenotazioni = db.execute_query("SELECT p.id, p.nome_cliente, s.nome, pers.nome, p.orario FROM prenotazioni p JOIN servizi s ON p.id_servizio = s.id JOIN personale pers ON p.id_personale = pers.id WHERE s.id_categoria IN (SELECT id FROM categorie WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'))",(user_id,))
 
     db.close()
     return render_template("gestisci_licenze.html", user_id=user_id, licenze_disponibili=licenze_disponibili,
-                           licenze_attuali=licenze_attuali, reparti=reparti, file_reparto=file_reparto)
-                           
+                           licenze_attuali=licenze_attuali, categorie=categorie, servizi=servizi, personale=personale, prenotazioni=prenotazioni)
+
+@app.route("/gestisci_eliminacode/<int:user_id>", methods=["GET", "POST"])
+def gestisci_eliminacode(user_id):
+    if not session.get("is_admin"):
+        return redirect("/login")
+
+    db = Database()
+
+    if request.method == "POST":
+        azione = request.form.get("azione")
+
+        if azione == "aggiungi_reparto":
+            nome_reparto = request.form.get("nuovo_reparto").strip()
+            ip_reparto = request.form.get("ip_reparto").strip()
+            if nome_reparto and ip_reparto:
+                db.execute_query("INSERT INTO reparti (nome, ip_address, id_licenza) VALUES (%s, %s, (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'))", 
+                                 (nome_reparto, ip_reparto, user_id), commit=True)
+
+        elif azione == "modifica_ip":
+            reparto_id = request.form.get("reparto_id")
+            nuovo_ip = request.form.get("nuovo_ip").strip()
+            db.execute_query("UPDATE reparti SET ip_address = %s WHERE id = %s", (nuovo_ip, reparto_id), commit=True)
+
+        elif azione == "elimina_reparto":
+            reparto_id = request.form.get("elimina_reparto")
+            db.execute_query("DELETE FROM reparti WHERE id = %s", (reparto_id,), commit=True)
+
+        elif azione == "aggiungi_fila":
+            reparto_id = request.form.get("reparto_id")
+            nuova_fila = request.form.get("nuova_fila").strip()
+            db.execute_query("INSERT INTO file_reparto (nome, id_reparto) VALUES (%s, %s)", (nuova_fila, reparto_id), commit=True)
+
+        elif azione == "elimina_fila":
+            fila_id = request.form.get("elimina_file")
+            db.execute_query("DELETE FROM file_reparto WHERE id = %s", (fila_id,), commit=True)
+
+        return redirect(f"/gestisci_eliminacode/{user_id}")
+
+    reparti = db.execute_query("SELECT id, nome, ip_address FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')", (user_id,))
+    file_reparto = {reparto[0]: db.execute_query("SELECT id, nome FROM file_reparto WHERE id_reparto = %s", (reparto[0],)) for reparto in reparti}
+
+    db.close()
+    return render_template("gestisci_eliminacode.html", user_id=user_id, reparti=reparti, file_reparto=file_reparto)
+
+
+@app.route("/gestisci_prenotazioni/<int:user_id>", methods=["GET", "POST"])
+def gestisci_prenotazioni(user_id):
+    if not session.get("is_admin"):
+        return redirect("/login")
+
+    db = Database()
+
+    if request.method == "POST":
+        azione = request.form.get("azione")
+
+        # Gestione Categorie
+        if azione == "aggiungi_categoria":
+            nome_categoria = request.form.get("nome_categoria").strip()
+            if nome_categoria:
+                db.execute_query(
+                    "INSERT INTO categorie (nome, id_licenza) VALUES (%s, (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'))",
+                    (nome_categoria, user_id), commit=True
+                )
+
+        elif azione == "modifica_categoria":
+            categoria_id = request.form.get("categoria_id")
+            nuovo_nome = request.form.get("nuovo_nome").strip()
+            db.execute_query("UPDATE categorie SET nome = %s WHERE id = %s", (nuovo_nome, categoria_id), commit=True)
+
+        elif azione == "elimina_categoria":
+            categoria_id = request.form.get("categoria_id")
+            db.execute_query("DELETE FROM categorie WHERE id = %s", (categoria_id,), commit=True)
+
+        # Gestione Servizi
+        elif azione == "aggiungi_servizio":
+            nome_servizio = request.form.get("nome_servizio").strip()
+            tempo_servizio = request.form.get("tempo_servizio")
+            costo_servizio = request.form.get("costo_servizio")
+            categoria_id = request.form.get("categoria_id")
+
+            if nome_servizio and tempo_servizio.isdigit() and categoria_id and costo_servizio.replace('.', '', 1).isdigit():
+                db.execute_query(
+                    "INSERT INTO servizi (nome, durata, costo, id_categoria) VALUES (%s, %s, %s, %s)",
+                    (nome_servizio, int(tempo_servizio), float(costo_servizio), categoria_id), commit=True
+                )
+
+        elif azione == "modifica_servizio":
+            servizio_id = request.form.get("servizio_id")
+            nuovo_nome = request.form.get("nuovo_nome").strip()
+            nuova_durata = request.form.get("nuova_durata")
+            nuovo_costo = request.form.get("nuovo_costo")
+
+            db.execute_query("UPDATE servizi SET nome = %s, durata = %s, costo = %s WHERE id = %s",
+                             (nuovo_nome, int(nuova_durata), float(nuovo_costo), servizio_id), commit=True)
+
+        elif azione == "elimina_servizio":
+            servizio_id = request.form.get("servizio_id")
+            db.execute_query("DELETE FROM servizi WHERE id = %s", (servizio_id,), commit=True)
+
+        # Gestione Personale
+        elif azione == "aggiungi_personale":
+            nome_personale = request.form.get("nome_personale").strip()
+            if nome_personale:
+                db.execute_query(
+                    "INSERT INTO personale (nome, id_licenza) VALUES (%s, (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'))",
+                    (nome_personale, user_id), commit=True
+                )
+
+        elif azione == "modifica_personale":
+            personale_id = request.form.get("personale_id")
+            nuovo_nome = request.form.get("nuovo_nome").strip()
+            db.execute_query("UPDATE personale SET nome = %s WHERE id = %s", (nuovo_nome, personale_id), commit=True)
+
+        elif azione == "elimina_personale":
+            personale_id = request.form.get("personale_id")
+            db.execute_query("DELETE FROM personale WHERE id = %s", (personale_id,), commit=True)
+
+        # Gestione Prenotazioni
+        elif azione == "aggiungi_prenotazione":
+            cliente_nome = request.form.get("cliente_nome").strip()
+            servizio_id = request.form.get("servizio_id")
+            personale_id = request.form.get("personale_id")
+            orario = request.form.get("orario")
+
+            if cliente_nome and servizio_id and personale_id and orario:
+                db.execute_query(
+                    "INSERT INTO prenotazioni (nome_cliente, id_servizio, id_personale, orario) VALUES (%s, %s, %s, %s)",
+                    (cliente_nome, servizio_id, personale_id, orario), commit=True
+                )
+
+        elif azione == "modifica_prenotazione":
+            prenotazione_id = request.form.get("prenotazione_id")
+            nuovo_cliente = request.form.get("nuovo_cliente").strip()
+            nuovo_servizio = request.form.get("nuovo_servizio")
+            nuovo_personale = request.form.get("nuovo_personale")
+            nuovo_orario = request.form.get("nuovo_orario")
+
+            db.execute_query(
+                "UPDATE prenotazioni SET nome_cliente = %s, id_servizio = %s, id_personale = %s, orario = %s WHERE id = %s",
+                (nuovo_cliente, nuovo_servizio, nuovo_personale, nuovo_orario, prenotazione_id), commit=True
+            )
+
+        elif azione == "elimina_prenotazione":
+            prenotazione_id = request.form.get("prenotazione_id")
+            db.execute_query("DELETE FROM prenotazioni WHERE id = %s", (prenotazione_id,), commit=True)
+
+        return redirect(f"/gestisci_prenotazioni/{user_id}")
+
+    # Recupero dati per la visualizzazione
+    categorie = db.execute_query(
+        "SELECT id, nome FROM categorie WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')",
+        (user_id,)
+    )
+
+    servizi = db.execute_query(
+        "SELECT s.id, s.nome, s.durata, s.costo, c.nome FROM servizi s JOIN categorie c ON s.id_categoria = c.id WHERE c.id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')",
+        (user_id,)
+    )
+
+    personale = db.execute_query(
+        "SELECT id, nome FROM personale WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')",
+        (user_id,)
+    )
+
+    prenotazioni = db.execute_query(
+        "SELECT p.id, p.nome_cliente, s.nome, pers.nome, p.orario FROM prenotazioni p "
+        "JOIN servizi s ON p.id_servizio = s.id "
+        "JOIN personale pers ON p.id_personale = pers.id "
+        "WHERE s.id_categoria IN (SELECT id FROM categorie WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'))",
+        (user_id,)
+    )
+
+    db.close()
+    return render_template(
+        "gestisci_prenotazioni.html",
+        user_id=user_id,
+        categorie=categorie,
+        servizi=servizi,
+        personale=personale,
+        prenotazioni=prenotazioni
+    )
 
 # 🔹 Route per ritirare il ticket
 @app.route("/ritira_ticket", methods=["GET", "POST"])
