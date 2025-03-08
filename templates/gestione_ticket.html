@@ -24,6 +24,8 @@
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             text-align: center;
+            position: relative;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
         .reparto-nome {
             font-size: 22px;
@@ -49,7 +51,7 @@
             flex-wrap: wrap;
             margin-top: 10px;
         }
-        .button-container button {
+        .button-container button, .set-number-container button {
             font-size: 18px;
             padding: 10px;
             width: 100px;
@@ -57,19 +59,45 @@
             border: none;
             border-radius: 5px;
             color: white;
+            transition: background 0.3s ease-in-out;
         }
         .btn-avanti { background: #28a745; }
-        .btn-indietro { background: #ffc107; }
+        .btn-avanti:hover { background: #218838; }
+        .btn-indietro { background: #ffc107; color: black; }
+        .btn-indietro:hover { background: #e0a800; }
         .btn-reset { background: #dc3545; }
+        .btn-reset:hover { background: #c82333; }
         .btn-imposta { background: #007bff; }
+        .btn-imposta:hover { background: #0056b3; }
 
-        /* Input numerico */
+        .btn-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+            background: #444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Stile migliorato per l'input */
+        .set-number-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
         .input-numero {
-            width: 80px;
+            width: 100px;
             font-size: 18px;
-            padding: 5px;
+            padding: 8px;
             text-align: center;
-            margin-right: 10px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
         }
 
         @media (max-width: 768px) {
@@ -77,10 +105,21 @@
                 flex-direction: column;
                 align-items: center;
             }
-            .button-container button {
+            .button-container button, .set-number-container button {
                 width: 80%;
                 max-width: 200px;
             }
+            .set-number-container {
+                flex-direction: column;
+            }
+        }
+
+        /* Nasconde il contenuto dei reparti chiusi */
+        .collapsed {
+            max-height: 50px;
+            opacity: 0.8;
+            overflow: hidden;
+            padding-bottom: 5px;
         }
     </style>
     <script>
@@ -94,6 +133,34 @@
                 }
             }
         });
+
+        function setNumber(repartoId) {
+            let nuovoNumero = document.getElementById("input-" + repartoId).value;
+            if (nuovoNumero === "" || isNaN(nuovoNumero) || parseInt(nuovoNumero) < 0) {
+                alert("Inserisci un numero valido!");
+                return;
+            }
+
+            fetch("/gestione_ticket", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `reparto=${repartoId}&azione=imposta&nuovo_numero=${nuovoNumero}`
+            }).then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("ticket-" + repartoId).innerText = nuovoNumero;
+                } else {
+                    alert("Errore nell'impostazione del numero.");
+                }
+            });
+        }
+
+        function toggleReparto(repartoId) {
+            let reparto = document.getElementById("reparto-" + repartoId);
+            reparto.classList.toggle("collapsed");
+            let button = document.getElementById("toggle-btn-" + repartoId);
+            button.textContent = reparto.classList.contains("collapsed") ? "➕" : "➖";
+        }
     </script>
 </head>
 <body>
@@ -102,7 +169,8 @@
 
     <div class="container">
         {% for reparto in reparti %}
-        <div class="reparto-container">
+        <div class="reparto-container" id="reparto-{{ reparto[0] }}">
+            <button class="btn-toggle" id="toggle-btn-{{ reparto[0] }}" onclick="toggleReparto('{{ reparto[0] }}')">➖</button>
             <div class="reparto-nome">{{ reparto[1] }}</div>
             <div class="ticket-number" id="ticket-{{ reparto[0] }}">
                 {{ numeri_ticket[reparto[0]] if reparto[0] in numeri_ticket else 0 }}
@@ -114,10 +182,11 @@
                     <button type="submit" name="azione" value="indietro" class="btn-indietro">Indietro</button>
                     <button type="submit" name="azione" value="reset" class="btn-reset">Reset</button>
                 </div>
-                <br>
-                <input type="number" name="nuovo_numero" class="input-numero" min="0" placeholder="Numero">
-                <button type="submit" name="azione" value="imposta" class="btn-imposta">Imposta</button>
             </form>
+            <div class="set-number-container">
+                <input type="number" id="input-{{ reparto[0] }}" class="input-numero" min="0" placeholder="Numero">
+                <button class="btn-imposta" onclick="setNumber('{{ reparto[0] }}')">Imposta</button>
+            </div>
         </div>
         {% endfor %}
     </div>
