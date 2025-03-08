@@ -512,7 +512,6 @@ def aggiorna_ticket():
     socketio.emit("update_tickets", numeri_formattati)
     return "OK", 200
 
-
 @app.route("/gestione_ticket", methods=["GET", "POST"])
 def gestione_ticket():
     if "user_id" not in session:
@@ -559,28 +558,42 @@ def gestione_ticket():
                 numero_attuale = result[0][0]
 
                 if azione == "avanti":
+                    numero_attuale += 1
                     db.execute_query(
-                        "UPDATE ticket_reparto SET numero_attuale = numero_attuale + 1 WHERE id_reparto = %s", 
-                        (reparto_id,), commit=True
+                        "UPDATE ticket_reparto SET numero_attuale = %s WHERE id_reparto = %s",
+                        (numero_attuale, reparto_id), commit=True
                     )
+
                 elif azione == "indietro" and numero_attuale > 0:
+                    numero_attuale -= 1
                     db.execute_query(
-                        "UPDATE ticket_reparto SET numero_attuale = numero_attuale - 1 WHERE id_reparto = %s", 
-                        (reparto_id,), commit=True
+                        "UPDATE ticket_reparto SET numero_attuale = %s WHERE id_reparto = %s",
+                        (numero_attuale, reparto_id), commit=True
                     )
+
                 elif azione == "reset":
+                    numero_attuale = 0
                     db.execute_query(
-                        "UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = %s", 
+                        "UPDATE ticket_reparto SET numero_attuale = 0 WHERE id_reparto = %s",
                         (reparto_id,), commit=True
                     )
+
                 elif azione == "imposta" and nuovo_numero.isdigit():
+                    numero_attuale = int(nuovo_numero)
                     db.execute_query(
-                        "UPDATE ticket_reparto SET numero_attuale = %s WHERE id_reparto = %s", 
-                        (int(nuovo_numero), reparto_id), commit=True
+                        "UPDATE ticket_reparto SET numero_attuale = %s WHERE id_reparto = %s",
+                        (numero_attuale, reparto_id), commit=True
                     )
+
+                # Aggiorna la mappa con il nuovo valore
+                numeri_ticket[int(reparto_id)] = numero_attuale
 
                 # Aggiorna i ticket in tempo reale via WebSocket
                 socketio.emit("update_tickets", numeri_ticket)
+
+                # Se la richiesta viene da fetch (JS), restituiamo JSON
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return jsonify({"success": True, "new_value": numero_attuale})
 
     db.close()
     return render_template("gestione_ticket.html", reparti=reparti, numeri_ticket=numeri_ticket)
