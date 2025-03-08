@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Il tuo Ticket</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #000;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .ticket-number {
+            font-size: 120px;
+            font-weight: bold;
+            padding: 20px;
+            background-color: #ffcc00;
+            color: black;
+            border-radius: 10px;
+            display: inline-block;
+            width: 260px;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎟 Il tuo Ticket 🎟</h1>
+    <h2>Reparto: <span id="reparto"></span></h2>
+    <div class="ticket-number" id="numero"></div>
+
+    <script>
+        // Estrai i parametri dal link
+        const params = new URLSearchParams(window.location.search);
+        document.getElementById("reparto").innerText = params.get("reparto");
+        document.getElementById("numero").innerText = params.get("numero");
+    </script>
+
+</body>
+</html>

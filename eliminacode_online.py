@@ -243,14 +243,136 @@ def dashboard_admin():
 def dashboard_user():
     if "user_id" not in session:
         return redirect("/login")
-    
+
     user_id = session["user_id"]
     db = Database()
-    licenze = db.execute_query("SELECT tipo, data_scadenza FROM licenze WHERE id_utente = %s", (user_id,))
+
+    # Recupera le licenze dell'utente
+    licenze = db.execute_query(
+        "SELECT tipo, data_scadenza FROM licenze WHERE id_utente = %s", (user_id,)
+    )
+
+    # Controlla se le licenze specifiche sono attive
     eliminacode_attiva = any(licenza[0] == "eliminacode" for licenza in licenze)
+    prenotazioni_attiva = any(licenza[0] == "prenotazioni" for licenza in licenze)
+
     db.close()
+    return render_template(
+        "dashboard_user.html",
+        username=session["username"],
+        licenze=licenze,
+        eliminacode_attiva=eliminacode_attiva,
+        prenotazioni_attiva=prenotazioni_attiva
+    )
+
+@app.route("/gestione_eliminacode")
+def gestione_eliminacode():
+    if "user_id" not in session:
+        return redirect("/login")
     
-    return render_template("dashboard_user.html", username=session["username"], licenze=licenze, eliminacode_attiva=eliminacode_attiva)
+    return render_template("gestione_eliminacode.html")
+
+from flask import jsonify
+
+@app.route("/gestione_prenotazioni")
+def gestione_prenotazioni_redirect():
+    if "user_id" not in session:
+        return redirect("/login")
+    
+    user_id = session["user_id"]
+    return redirect(f"/gestione_prenotazioni/{user_id}")
+
+
+@app.route("/gestione_prenotazioni/<int:user_id>")
+def gestione_prenotazioni_user(user_id):
+    if "user_id" not in session or session["user_id"] != user_id:
+        return redirect("/login")
+
+    db = Database()
+
+    personale = db.execute_query(
+        "SELECT id, nome FROM personale WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni')",
+        (user_id,)
+    )
+
+    db.close()
+    return render_template("gestione_prenotazioni.html", user_id=user_id, personale=personale)
+
+
+@app.route("/api/prenotazioni/<int:user_id>")
+def api_prenotazioni(user_id):
+    if "user_id" not in session:
+        return jsonify([])
+
+    db = Database()
+    
+    prenotazioni = db.execute_query("""
+        SELECT p.id, p.nome_cliente, s.nome, pers.nome, p.orario 
+        FROM prenotazioni p 
+        JOIN servizi s ON p.id_servizio = s.id 
+        JOIN personale pers ON p.id_personale = pers.id 
+        WHERE s.id_categoria IN (
+            SELECT id FROM categorie WHERE id_licenza IN (
+                SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'prenotazioni'
+            )
+        )
+    """, (user_id,))
+
+    db.close()
+
+    events = []
+    for prenotazione in prenotazioni:
+        prenotazione_id, cliente_nome, servizio_nome, personale_nome, orario = prenotazione
+        events.append({
+            "id": prenotazione_id,
+            "title": f"{cliente_nome} - {servizio_nome}",
+            "start": orario.isoformat(),
+            "extendedProps": {
+                "personale": f"Assegnato a: {personale_nome}"
+            }
+        })
+
+    return jsonify(events)
+
+@app.route("/api/prenotazioni_personale/<int:personale_id>")
+def api_prenotazioni_personale(personale_id):
+    if "user_id" not in session:
+        return jsonify([])
+
+    db = Database()
+    
+    prenotazioni = db.execute_query("""
+        SELECT p.id, p.nome_cliente, s.nome, s.durata, p.orario 
+        FROM prenotazioni p 
+        JOIN servizi s ON p.id_servizio = s.id 
+        WHERE p.id_personale = %s
+    """, (personale_id,))
+
+    db.close()
+
+    events = []
+    for prenotazione in prenotazioni:
+        prenotazione_id, cliente_nome, servizio_nome, durata, orario = prenotazione
+
+        # Calcolo dell'ora di fine
+        from datetime import datetime, timedelta
+        inizio = datetime.fromisoformat(str(orario))
+        fine = inizio + timedelta(minutes=durata)
+
+        events.append({
+            "id": prenotazione_id,
+            "title": f"{servizio_nome}",
+            "start": inizio.isoformat(),
+            "end": fine.isoformat(),
+            "extendedProps": {
+                "cliente": f"Cliente: {cliente_nome}",
+                "durata": f"{durata} min",
+                "orario_fine": fine.strftime("%H:%M")
+            }
+        })
+
+    return jsonify(events)
+
 
 @app.route("/aggiungi_utente", methods=["GET", "POST"])
 def aggiungi_utente():

@@ -205,6 +205,57 @@
                 {% endfor %}
             </table>
         </div>
+		<!-- Gestione Personale -->
+<div class="section">
+    <h3>Personale</h3>
+    <form method="POST">
+        <input type="text" name="nome_personale" placeholder="Nome Personale" required>
+        <button type="submit" name="azione" value="aggiungi_personale">Aggiungi</button>
+    </form>
+    <table>
+        <tr>
+            <th>Nome</th>
+            <th>Azioni</th>
+        </tr>
+        {% for personale_id, personale_nome in personale %}
+        <tr>
+            <td>{{ personale_nome }}</td>
+            <td>
+                <form method="POST" style="display:inline;">
+                    <input type="hidden" name="personale_id" value="{{ personale_id }}">
+                    <input type="text" name="nuovo_nome" placeholder="Modifica Nome">
+                    <button type="submit" class="btn-edit" name="azione" value="modifica_personale">Salva</button>
+                    <button type="submit" class="btn-delete" name="azione" value="elimina_personale">X</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+	<!-- Aggiunta Prenotazione -->
+<div class="section">
+    <h3>Nuova Prenotazione</h3>
+    <form method="POST">
+        <input type="text" name="cliente_nome" placeholder="Nome Cliente" required>
+
+        <select name="servizio_id" required>
+            <option value="">Seleziona Servizio</option>
+            {% for servizio_id, servizio_nome, durata, costo, categoria_nome in servizi %}
+            <option value="{{ servizio_id }}">{{ servizio_nome }} - {{ durata }} min - €{{ costo }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="personale_id" required>
+            <option value="">Seleziona Personale</option>
+            {% for personale_id, personale_nome in personale %}
+            <option value="{{ personale_id }}">{{ personale_nome }}</option>
+            {% endfor %}
+        </select>
+
+        <input type="datetime-local" name="orario" required>
+        <button type="submit" name="azione" value="aggiungi_prenotazione">Aggiungi Prenotazione</button>
+    </form>
+</div>
 
         <!-- Gestione Prenotazioni -->
         <div class="section">

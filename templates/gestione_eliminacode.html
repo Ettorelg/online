@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestione Eliminacode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .button-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .button-container button {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            transition: 0.3s ease-in-out;
+        }
+
+        .btn-ticket {
+            background: #007bff;
+        }
+
+        .btn-ticket:hover {
+            background: #0056b3;
+        }
+
+        .btn-ritira {
+            background: #28a745;
+        }
+
+        .btn-ritira:hover {
+            background: #218838;
+        }
+
+        .btn-ritirato {
+            background: #ff9800;
+        }
+
+        .btn-ritirato:hover {
+            background: #e68900;
+        }
+
+        .btn-back {
+            background: #dc3545;
+        }
+
+        .btn-back:hover {
+            background: #c82333;
+        }
+
+        @media (max-width: 768px) {
+            .button-container button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Gestione Eliminacode</h2>
+
+        <div class="button-container">
+            <button class="btn-ticket" onclick="window.location.href='/gestione_ticket'">
+                Gestione Ticket
+            </button>
+            
+            <button class="btn-ritira" onclick="window.location.href='/ritira_ticket'">
+                Ritira Ticket
+            </button>
+            
+            <button class="btn-ritirato" onclick="window.location.href='/ticket_chiamato'">
+                Ticket Chiamato
+            </button>
+
+            <button class="btn-back" onclick="window.location.href='/dashboard_user'">
+                Torna alla Dashboard
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>

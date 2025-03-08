@@ -4,56 +4,138 @@
     <meta charset="UTF-8">
     <title>Dashboard Utente</title>
     <style>
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .button-container { margin-top: 20px; text-align: center; }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        .button-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
         .button-container button {
-            display: block;
-            width: 250px;
-            margin: 10px auto;
-            padding: 12px;
+            width: 80%;
+            padding: 10px;
             font-size: 16px;
             cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            transition: 0.3s ease-in-out;
+        }
+
+        .btn-eliminacode {
+            background: #28a745;
+        }
+
+        .btn-eliminacode:hover {
+            background: #218838;
+        }
+
+        .btn-prenotazioni {
+            background: #ff9800;
+        }
+
+        .btn-prenotazioni:hover {
+            background: #e68900;
+        }
+
+        .btn-logout {
+            background: #dc3545;
+        }
+
+        .btn-logout:hover {
+            background: #c82333;
+        }
+
+        @media (max-width: 768px) {
+            .button-container button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <h2>Benvenuto, {{ username }}!</h2>
 
-    <h3>Licenze Attive</h3>
+    <div class="container">
+        <h2>Benvenuto, {{ username }}!</h2>
 
-    {% if licenze %}
-    <table>
-        <thead>
-            <tr>
-                <th>Tipo di Licenza</th>
-                <th>Scadenza</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for licenza in licenze %}
-            <tr>
-                <td>{{ licenza[0] }}</td>
-                <td>{{ licenza[1] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>Non hai licenze attive.</p>
-    {% endif %}
+        <h3>Licenze Attive</h3>
 
-    <!-- Se la licenza eliminacode è attiva, mostra i pulsanti -->
-    {% if eliminacode_attiva %}
-    <div class="button-container">
-        <button onclick="window.location.href='/ritira_ticket'">Ritira Ticket</button>
-        <button onclick="window.location.href='/ticket_chiamato'">Visualizza Ticket Chiamato</button>
-        <button onclick="window.location.href='/gestione_ticket'">Gestione Ticket</button>
+        {% if licenze %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo di Licenza</th>
+                    <th>Scadenza</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for licenza in licenze %}
+                <tr>
+                    <td>{{ licenza[0] }}</td>
+                    <td>{{ licenza[1] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>Non hai licenze attive.</p>
+        {% endif %}
+
+        <div class="button-container">
+            {% if eliminacode_attiva %}
+                <button class="btn-eliminacode" onclick="window.location.href='/gestione_eliminacode'">
+                    Gestione Eliminacode
+                </button>
+            {% endif %}
+
+            {% if prenotazioni_attiva %}
+                <button class="btn-prenotazioni" onclick="window.location.href='/gestione_prenotazioni'">
+                    Gestione Prenotazioni
+                </button>
+            {% endif %}
+
+            <button class="btn-logout" onclick="window.location.href='/logout'">Logout</button>
+        </div>
     </div>
-    {% endif %}
 
-    <br>
-    <a href="/logout">Logout</a>
 </body>
 </html>

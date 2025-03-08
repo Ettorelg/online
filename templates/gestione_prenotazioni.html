@@ -2,51 +2,134 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestione Prenotazioni</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #f9f9f9; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
-        input, button { margin: 5px; padding: 10px; font-size: 16px; width: 80%; }
-        .prenotazione { background: #eee; padding: 10px; margin: 5px 0; border-radius: 5px; }
-    </style>
-    <script>
-        var socket = io();
-        socket.on("update_prenotazioni", function() {
-            location.reload(); // Ricarica la pagina quando ci sono aggiornamenti
-        });
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/it.js"></script>
 
-        function aggiungiPrenotazione() {
-            let nomeCliente = document.getElementById("nome_cliente").value;
-            let orario = document.getElementById("orario").value;
-            
-            fetch("/gestione_prenotazioni", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `nome_cliente=${nomeCliente}&orario=${orario}`
-            }).then(response => response.json())
-            .then(data => {
-                if (data.success) location.reload();
-            });
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 10px;
         }
-    </script>
+
+        .container {
+            max-width: 750px;
+            margin: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .calendar-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .calendar-box {
+            width: 48%;
+            min-width: 350px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f9f9f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #007bff;
+            font-size: 14px;
+        }
+
+        .calendar-box .fc {
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-box {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <h2>Gestione Prenotazioni</h2>
     <div class="container">
-        <input type="text" id="nome_cliente" placeholder="Nome Cliente">
-        <input type="datetime-local" id="orario">
-        <button onclick="aggiungiPrenotazione()">Aggiungi Prenotazione</button>
-        
-        <h3>Prenotazioni Attuali</h3>
-        {% for prenotazione in prenotazioni %}
-        <div class="prenotazione">
-            <strong>{{ prenotazione[1] }}</strong> - {{ prenotazione[2] }} - <em>{{ prenotazione[3] }}</em>
+        <h2>Gestione Prenotazioni</h2>
+
+        <div class="calendar-container">
+            {% for personale_id, personale_nome in personale %}
+            <div class="calendar-box">
+                <div class="calendar-title">{{ personale_nome }}</div>
+                <div id="calendar-{{ personale_id }}"></div>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+
+        <br>
+		<button class="btn-back" onclick="window.location.href='/dashboard_user'">
+                Torna alla Dashboard
+            </button>
     </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        {% for personale_id, personale_nome in personale %}
+        var calendarEl = document.getElementById('calendar-{{ personale_id }}');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'listDay',  // Mostra solo gli eventi del giorno corrente
+            height: "auto",
+            locale: 'it',
+            slotMinTime: "07:00:00", // Imposta l'orario minimo visibile nel calendario
+            slotMaxTime: "22:00:00", // Imposta l'orario massimo visibile nel calendario
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'listDay,timeGridDay,timeGridWeek,dayGridMonth'  // Ora include "Lista", "Giorno", "Settimana", "Mese"
+            },
+            events: '/api/prenotazioni_personale/{{ personale_id }}',
+            eventColor: '#007bff',
+            eventMouseEnter: function (info) {
+                var tooltip = document.createElement('div');
+                tooltip.setAttribute('id', 'calendar-tooltip');
+                tooltip.innerHTML = `<strong>${info.event.title}</strong><br>
+                    ${info.event.extendedProps.cliente}<br>
+                    <strong>Inizio:</strong> ${info.event.start.toLocaleTimeString()}<br>
+                    <strong>Fine:</strong> ${info.event.extendedProps.orario_fine}`;
+                tooltip.style.position = 'absolute';
+                tooltip.style.background = 'white';
+                tooltip.style.padding = '5px';
+                tooltip.style.border = '1px solid black';
+                tooltip.style.borderRadius = '5px';
+                tooltip.style.top = `${info.jsEvent.pageY + 10}px`;
+                tooltip.style.left = `${info.jsEvent.pageX + 10}px`;
+                document.body.appendChild(tooltip);
+            },
+            eventMouseLeave: function () {
+                var tooltip = document.getElementById('calendar-tooltip');
+                if (tooltip) {
+                    tooltip.remove();
+                }
+            }
+        });
+        calendar.render();
+        {% endfor %}
+    });
+</script>
+
 
 </body>
 </html>
