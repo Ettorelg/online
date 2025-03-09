@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Il tuo Ticket</title>
+    <title>I tuoi Ticket</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
@@ -13,14 +13,20 @@
             padding: 20px;
             background-color: #fff;
         }
-        .ticket-container {
+        .tickets-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .ticket-box {
             width: 300px;
-            margin: auto;
             padding: 20px;
             border: 2px solid #000;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             text-align: center;
             border-radius: 10px;
+            background: white;
         }
         .ticket-title {
             font-size: 22px;
@@ -34,7 +40,7 @@
             color: #555;
         }
         .ticket-number {
-            font-size: 60px;
+            font-size: 50px;
             font-weight: bold;
             color: #000;
             margin: 15px 0;
@@ -63,48 +69,58 @@
 </head>
 <body>
 
-    <div class="ticket-container">
-        <div class="ticket-title">TICKET</div>
-        <div class="ticket-info">Reparto: <strong id="reparto-nome">{{ reparto_nome }}</strong></div>
-        <div class="ticket-number" id="ticket-number">{{ ticket_number }}</div>
-        <div class="ticket-info">-------------------</div>
+    <h1>I tuoi Ticket</h1>
+
+    <div class="tickets-container">
+        {% for ticket in tickets %}
+        <div class="ticket-box">
+            <div class="ticket-title">TICKET</div>
+            <div class="ticket-info">Reparto: <strong>{{ ticket.reparto_nome }}</strong></div>
+            <div class="ticket-number" id="ticket-{{ ticket.reparto_id }}">{{ ticket.ticket_number }}</div>
+            <div class="ticket-info">-------------------</div>
+        </div>
+        {% endfor %}
     </div>
 
 <audio id="beep-sound">
     <source src="/static/ding.mp3" type="audio/wav">
 </audio>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 <script>
     var socket = io();
-    var ticketElement = document.getElementById("ticket-number");
-    var repartoNome = document.getElementById("reparto-nome").innerText.trim();
-    var numeroCorrente = parseInt(ticketElement.textContent);
+    var beep = document.getElementById("beep-sound");
 
-    // 🔹 Recupera l'ID del reparto dall'attributo data
-    var repartoID = "{{ reparto_id }}"; // Deve essere passato dal backend!
+    // Mappa per tenere traccia dei numeri dei ticket
+    var tickets = {
+        {% for ticket in tickets %}
+            "{{ ticket.reparto_id }}": {{ ticket.ticket_number }},
+        {% endfor %}
+    };
 
-    console.log("🟢 WebSocket Connesso - Reparto:", repartoNome, "ID:", repartoID, "Numero Ticket:", numeroCorrente);
+    console.log("🟢 WebSocket Connesso - Ticket Registrati:", tickets);
 
-    // **Ascolta gli aggiornamenti generici dei ticket**
+    // **Ascolta gli aggiornamenti dei ticket**
     socket.on("update_tickets", function(numeri) {
-        console.log("🔔 Ricevuto aggiornamento ticket:", numeri);
+        console.log("🔔 Aggiornamento ticket ricevuto:", numeri);
 
-        // 🔎 Confronta l'ID del reparto con i dati ricevuti
-        if (numeri[repartoID] == numeroCorrente) {
-            console.log("🎟 Il tuo ticket è stato chiamato!");
+        for (var repartoId in tickets) {
+            if (numeri[repartoId] == tickets[repartoId]) {
+                console.log("🎟 Il ticket del reparto", repartoId, "è stato chiamato!");
 
-            // **Effetto visivo**
-            ticketElement.classList.add("highlight");
-            setTimeout(() => ticketElement.classList.remove("highlight"), 5000);
+                // **Effetto visivo sul numero del ticket**
+                var ticketElement = document.getElementById("ticket-" + repartoId);
+                if (ticketElement) {
+                    ticketElement.classList.add("highlight");
+                    setTimeout(() => ticketElement.classList.remove("highlight"), 3000);
+                }
 
-            // **Riproduci il suono**
-            playBeep();
+                // **Riproduce il suono**
+                playBeep();
+            }
         }
     });
 
     function playBeep() {
-        var beep = document.getElementById("beep-sound");
         beep.play().then(() => {
             console.log("🔊 Beep riprodotto con successo");
         }).catch(e => {
@@ -112,8 +128,6 @@
         });
     }
 </script>
-
-
 
 </body>
 </html>

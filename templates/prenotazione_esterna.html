@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prenota un Servizio</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        select, input, button {
+            width: 95%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            transition: 0.3s ease-in-out;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #218838;
+        }
+
+        @media (max-width: 768px) {
+            select, input, button {
+                width: 100%;
+            }
+        }
+    </style>
+
+    <script>
+        let serviziDisponibili = {{ servizi|tojson }};
+        let personaleDisponibile = {{ personale|tojson }};
+
+        function aggiornaServizi() {
+            let categoriaId = document.getElementById("categoria").value;
+            let personaleId = document.getElementById("personale").value;
+            let servizioSelect = document.getElementById("servizio");
+
+            servizioSelect.innerHTML = "<option value=''>Seleziona Servizio</option>";
+
+            serviziDisponibili.forEach(servizio => {
+                let validoPerCategoria = (categoriaId === "" || servizio.id_categoria == categoriaId);
+                let validoPerPersonale = (personaleId === "" || personaleDisponibile.find(p => p.id == personaleId).servizi_inclusi.includes(servizio.id));
+
+                if (validoPerCategoria && validoPerPersonale) {
+                    let option = document.createElement("option");
+                    option.value = servizio.id;
+                    option.textContent = `${servizio.nome} - ${servizio.durata} min - €${servizio.costo}`;
+                    servizioSelect.appendChild(option);
+                }
+            });
+        }
+
+        function aggiornaPersonale() {
+            let servizioId = document.getElementById("servizio").value;
+            let personaleSelect = document.getElementById("personale");
+
+            personaleSelect.innerHTML = "<option value=''>Seleziona Personale</option>";
+
+            personaleDisponibile.forEach(persona => {
+                if (persona.servizi_inclusi.includes(parseInt(servizioId))) {
+                    let option = document.createElement("option");
+                    option.value = persona.id;
+                    option.textContent = `${persona.nome} (Orario: ${persona.orario_inizio} - ${persona.orario_fine})`;
+                    personaleSelect.appendChild(option);
+                }
+            });
+
+            aggiornaServizi();  // Aggiorna i servizi disponibili in base al personale selezionato
+        }
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Prenota un Servizio</h2>
+        <form method="POST" action="/prenota/{{ user_id }}">
+
+            <select id="categoria" name="categoria_id" onchange="aggiornaServizi()" required>
+                <option value="">Seleziona Categoria</option>
+                {% for categoria_id, categoria_nome in categorie %}
+                <option value="{{ categoria_id }}">{{ categoria_nome }}</option>
+                {% endfor %}
+            </select>
+
+            <select id="personale" name="personale_id" onchange="aggiornaServizi()" required>
+                <option value="">Seleziona Personale</option>
+                {% for persona in personale %}
+                <option value="{{ persona.id }}">{{ persona.nome }} (Orario: {{ persona.orario_inizio }} - {{ persona.orario_fine }})</option>
+                {% endfor %}
+            </select>
+
+            <select id="servizio" name="servizio_id" required>
+                <option value="">Seleziona Servizio</option>
+            </select>
+
+            <input type="datetime-local" name="orario" required>
+
+            <button type="submit">Procedi con la Prenotazione</button>
+        </form>
+    </div>
+
+</body>
+</html>

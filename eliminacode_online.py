@@ -569,15 +569,31 @@ def gestisci_eliminacode(user_id):
 
         if azione == "aggiungi_reparto":
             nome_reparto = request.form.get("nuovo_reparto").strip()
-            ip_reparto = request.form.get("ip_reparto").strip()
-            if nome_reparto and ip_reparto:
-                db.execute_query("INSERT INTO reparti (nome, ip_address, id_licenza) VALUES (%s, %s, (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'))", 
-                                 (nome_reparto, ip_reparto, user_id), commit=True)
+            ip_reparto = request.form.get("ip_reparto", "").strip()  # Permetti IP vuoto
+            visibile_ritira = request.form.get("visibile_ritira", "off") == "on"  # Visibilità in ritira_ticket
+            visibile_qr = request.form.get("visibile_qr", "off") == "on"  # Visibilità in visualizza_ticket_qr
+            if nome_reparto:
+                db.execute_query(
+                    "INSERT INTO reparti (nome, ip_address, id_licenza, visibile_ritira, visibile_qr) VALUES (%s, NULLIF(%s, ''), (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'), %s, %s)", 
+                    (nome_reparto, ip_reparto, user_id, visibile_ritira, visibile_qr), commit=True
+                )
+                # Assegna di default il numero massimo a 0 quando si crea un nuovo reparto
+                reparto_id = db.execute_query("SELECT id FROM reparti WHERE nome = %s", (nome_reparto,))[0][0]
+                db.execute_query(
+                    "INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo) VALUES (%s, 0, 0)",
+                    (reparto_id,), commit=True
+                )
 
         elif azione == "modifica_ip":
             reparto_id = request.form.get("reparto_id")
-            nuovo_ip = request.form.get("nuovo_ip").strip()
-            db.execute_query("UPDATE reparti SET ip_address = %s WHERE id = %s", (nuovo_ip, reparto_id), commit=True)
+            nuovo_ip = request.form.get("nuovo_ip", "").strip()
+            db.execute_query("UPDATE reparti SET ip_address = NULLIF(%s, '') WHERE id = %s", (nuovo_ip, reparto_id), commit=True)
+
+        elif azione == "modifica_visibilita":
+            reparto_id = request.form.get("reparto_id")
+            visibile_ritira = request.form.get("visibile_ritira", "off") == "on"
+            visibile_qr = request.form.get("visibile_qr", "off") == "on"
+            db.execute_query("UPDATE reparti SET visibile_ritira = %s, visibile_qr = %s WHERE id = %s", (visibile_ritira, visibile_qr, reparto_id), commit=True)
 
         elif azione == "elimina_reparto":
             reparto_id = request.form.get("elimina_reparto")
@@ -594,8 +610,13 @@ def gestisci_eliminacode(user_id):
 
         return redirect(f"/gestisci_eliminacode/{user_id}")
 
-    reparti = db.execute_query("SELECT id, nome, ip_address FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')", (user_id,))
-    file_reparto = {reparto[0]: db.execute_query("SELECT id, nome FROM file_reparto WHERE id_reparto = %s", (reparto[0],)) for reparto in reparti}
+    reparti = db.execute_query(
+        "SELECT id, nome, ip_address, visibile_ritira, visibile_qr FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')", 
+        (user_id,)
+    )
+    file_reparto = {
+        reparto[0]: db.execute_query("SELECT id, nome FROM file_reparto WHERE id_reparto = %s", (reparto[0],)) for reparto in reparti
+    }
 
     db.close()
     return render_template("gestisci_eliminacode.html", user_id=user_id, reparti=reparti, file_reparto=file_reparto)
@@ -783,6 +804,7 @@ def ritira_ticket():
     user_id = session["user_id"]
     db = Database()
 
+    # Recupera solo i reparti con visibile_ritira = TRUE
     reparti = db.execute_query("""
         SELECT DISTINCT r.id, r.nome, r.ip_address 
         FROM reparti r
@@ -790,6 +812,7 @@ def ritira_ticket():
         WHERE l.id_utente = %s  
           AND l.tipo = 'eliminacode'
           AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
+          AND r.visibile_ritira = TRUE
     """, (user_id,))
 
     if request.method == "GET":
@@ -981,35 +1004,62 @@ def visualizza_ticket_qr():
 
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    user_id = session["user_id"]
     db = Database()
 
-    # Ottieni l'ID dell'utente dal parametro dell'URL
-    user_id = request.args.get("user")
-
-    if not user_id:
-        return "Errore: nessun utente specificato nel QR code.", 400
-
-    # Recupera solo i reparti associati all'utente specificato nel QR code
+    # Recupera solo i reparti con visibile_qr = TRUE
     reparti = db.execute_query("""
-        SELECT id, nome FROM reparti
-        WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s)
+        SELECT id, nome 
+        FROM reparti 
+        WHERE id_licenza IN (
+            SELECT id FROM licenze WHERE id_utente = %s
+        )
+        AND visibile_qr = TRUE
     """, (user_id,))
 
     if request.method == "POST":
-        reparto_id = request.form.get("reparto")
-        if reparto_id:
+        reparti_selezionati = request.form.getlist("reparto")  # Ottiene tutti i reparti selezionati
+        if not reparti_selezionati:
+            db.close()
+            return jsonify({"success": False, "message": "Nessun reparto selezionato"}), 400
+
+        ticket_dati = []
+        for reparto_id in reparti_selezionati:
+            # Recupera il nome del reparto
+            reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+            reparto_nome = reparto_nome_result[0][0] if reparto_nome_result else None
+
+            if not reparto_nome:
+                continue  # Salta il reparto se non esiste
+
+            # Ottieni il numero massimo attuale del ticket
             result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
             ticket_number = (result[0][0] + 1) if result else 1
 
+            # Aggiorna il numero massimo del ticket
             db.execute_query(
                 "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
                 (ticket_number, reparto_id), commit=True
             )
 
-            db.close()
-            return redirect(f"/visualizza_ticket/{reparto_id}/{ticket_number}")
+            # Aggiunge il ticket alla lista
+            ticket_dati.append({
+                "reparto_id": reparto_id,
+                "reparto_nome": reparto_nome,
+                "ticket_number": ticket_number
+            })
 
-    db.close()
+        db.close()
+        
+        if not ticket_dati:
+            return jsonify({"success": False, "message": "Errore nel generare i ticket"}), 500
+
+        # Reindirizza alla pagina che mostra tutti i ticket
+        return render_template("visualizza_tutti_ticket.html", tickets=ticket_dati)
+
     return render_template("ritira_ticket_qr.html", reparti=reparti)
 
 from escpos.printer import Network

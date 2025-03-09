@@ -97,7 +97,7 @@
             <h3>Aggiungi Reparto</h3>
             <form method="POST">
                 <input type="text" name="nuovo_reparto" placeholder="Nome Reparto" required>
-                <input type="text" name="ip_reparto" placeholder="Indirizzo IP" required>
+                <input type="text" name="ip_reparto" placeholder="Indirizzo IP (Opzionale)">
                 <button type="submit" name="azione" value="aggiungi_reparto">Aggiungi Reparto</button>
             </form>
         </div>
@@ -111,23 +111,37 @@
                     <th>Indirizzo IP</th>
                     <th>Azioni</th>
                 </tr>
-                {% for reparto_id, reparto_nome, ip_address in reparti %}
+				{% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr in reparti %}
+
                 <tr>
-                    <td>{{ reparto_nome }}</td>
-                    <td>
-                        <form method="POST">
-                            <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
-                            <input type="text" name="nuovo_ip" value="{{ ip_address }}" placeholder="Modifica IP">
-                            <button type="submit" name="azione" value="modifica_ip">Salva</button>
-                        </form>
-                    </td>
-                    <td>
-                        <form method="POST">
-                            <input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
-                            <button type="submit" class="btn-delete" name="azione" value="elimina_reparto">Elimina</button>
-                        </form>
-                    </td>
-                </tr>
+    <td>{{ reparto_nome }}</td>
+    <td>
+        <form method="POST">
+            <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+            <input type="text" name="nuovo_ip" value="{{ ip_address if ip_address else '' }}" placeholder="Nessuna stampante">
+            <button type="submit" name="azione" value="modifica_ip">Salva</button>
+        </form>
+    </td>
+    <td>
+        <form method="POST">
+            <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+            <label>
+                <input type="checkbox" name="visibile_ritira" {% if visibile_ritira %}checked{% endif %} onchange="this.form.submit()"> Ritira Ticket
+            </label>
+            <label>
+                <input type="checkbox" name="visibile_qr" {% if visibile_qr %}checked{% endif %} onchange="this.form.submit()"> QR Code
+            </label>
+            <input type="hidden" name="azione" value="modifica_visibilita">
+        </form>
+    </td>
+    <td>
+        <form method="POST">
+            <input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
+            <button type="submit" class="btn-delete" name="azione" value="elimina_reparto">Elimina</button>
+        </form>
+    </td>
+</tr>
+
                 {% endfor %}
             </table>
         </div>
@@ -135,7 +149,8 @@
         <!-- Gestione Fila/Code -->
         <div class="section">
             <h3>Gestisci Code per Reparto</h3>
-            {% for reparto_id, reparto_nome, ip_address in reparti %}
+			{% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr in reparti %}
+
             <h4>{{ reparto_nome }}</h4>
             <table>
                 <tr>
