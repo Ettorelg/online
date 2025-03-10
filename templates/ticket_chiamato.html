@@ -155,98 +155,123 @@
         }
     </style>
 <script>
-    var socket = io();
-    var selectedVoice = null;
+var socket = io();
+var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
+var selectedVoice = null;
 
-    function loadVoices() {
-        var voices = window.speechSynthesis.getVoices();
-        console.log("🔊 Voci disponibili:", voices);
+// Recupera la preferenza dell'utente (default: "synth" per Sintesi Vocale)
+function getAudioPreference() {
+    return localStorage.getItem("audioMode") || "synth"; 
+}
 
-        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-                        voices.find(v => v.name.includes("Google italiano femminile")) ||
-                        voices.find(v => v.name.includes("Alice")) ||
-                        voices.find(v => v.name.toLowerCase().includes("female")) ||
-                        voices.find(v => v.lang === "it-IT");
+// Salva la preferenza dell'utente
+function saveAudioPreference() {
+    let mode = document.getElementById("audioMode").value;
+    localStorage.setItem("audioMode", mode);
+    console.log("🎵 Modalità audio salvata:", mode);
+}
 
-        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
-    }
+// Carica le voci disponibili per la sintesi vocale
+function loadVoices() {
+    var voices = window.speechSynthesis.getVoices();
+    selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                    voices.find(v => v.name.includes("Google italiano femminile")) ||
+                    voices.find(v => v.name.includes("Alice")) ||
+                    voices.find(v => v.name.toLowerCase().includes("female")) ||
+                    voices.find(v => v.lang === "it-IT");
+    console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+}
 
-    function announceNumber(number, reparto) {
+// Annuncia il numero utilizzando la modalità scelta dall'utente
+function announceNumber(number, reparto) {
+    let mode = getAudioPreference();
+
+    if (mode === "synth" && 'speechSynthesis' in window) {
         var msg = new SpeechSynthesisUtterance("Numero " + number);
         msg.voice = selectedVoice;
         msg.rate = 0.7;
         msg.pitch = 1.0;
         window.speechSynthesis.speak(msg);
+    } else {
+        audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
     }
+}
 
-    function highlightNumber(element) {
-        element.classList.add("highlight");
-        setTimeout(() => element.classList.remove("highlight"), 5000);
-    }
+// Evidenzia il numero chiamato
+function highlightNumber(element) {
+    element.classList.add("highlight");
+    setTimeout(() => element.classList.remove("highlight"), 5000);
+}
 
-    socket.on("update_tickets", function(numeri) {
-        for (var reparto in numeri) {
-            var ticketElement = document.getElementById("ticket-" + reparto);
-            if (ticketElement) {
-                var oldNumber = ticketElement.innerText;
-                ticketElement.innerText = numeri[reparto];
+// Riceve aggiornamenti sui ticket chiamati
+socket.on("update_tickets", function(numeri) {
+    for (var reparto in numeri) {
+        var ticketElement = document.getElementById("ticket-" + reparto);
+        if (ticketElement) {
+            var oldNumber = ticketElement.innerText;
+            ticketElement.innerText = numeri[reparto];
 
-                if (oldNumber != numeri[reparto]) {
-                    highlightNumber(ticketElement);
-                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
-                }
+            if (oldNumber != numeri[reparto]) {
+                highlightNumber(ticketElement);
+                announceNumber(numeri[reparto], ticketElement.dataset.reparto);
             }
         }
-    });
+    }
+});
 
-    document.addEventListener("DOMContentLoaded", function () {
-        let qrContainer = document.getElementById("qrcode");
+document.addEventListener("DOMContentLoaded", function () {
+    let mode = getAudioPreference();
+    document.getElementById("audioMode").value = mode;
 
-        function generateQRCode() {
-            qrContainer.innerHTML = ""; // Svuota il contenitore
-            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+    let qrContainer = document.getElementById("qrcode");
 
-            // 🔹 Ottieni l'ID dell'utente dal backend
-            let userId = "{{ user_id }}";
+    function generateQRCode() {
+        qrContainer.innerHTML = ""; 
+        let size = qrContainer.offsetWidth; 
 
-            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
-            if (!userId || userId.trim() === "") {
-                console.error("❌ Errore: user_id non è definito.");
-                return;
-            }
+        let userId = "{{ user_id }}";
 
-            // 🔹 Genera il QR Code con l'ID dell'utente
-            new QRCode(qrContainer, {
-                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-                width: size,
-                height: size
-            });
-
-            console.log("✅ QR Code generato con successo per user_id:", userId);
+        if (!userId || userId.trim() === "") {
+            console.error("❌ Errore: user_id non è definito.");
+            return;
         }
 
-        // 🔹 Genera il QR Code dopo il caricamento della pagina
-        setTimeout(generateQRCode, 100);
+        new QRCode(qrContainer, {
+            text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+            width: size,
+            height: size
+        });
 
-        // Scorrimento immagini
-        let currentIndex = 0;
-        const images = document.querySelector(".carousel-images");
-        setInterval(() => {
-            currentIndex = (currentIndex + 1) % images.children.length;
-            images.style.transform = `translateX(-${currentIndex * 100}%)`;
-        }, 3000);
+        console.log("✅ QR Code generato con successo per user_id:", userId);
+    }
 
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        setTimeout(loadVoices, 500);
-    });
+    setTimeout(generateQRCode, 100);
 
-    function testVoice() {
+    let currentIndex = 0;
+    const images = document.querySelector(".carousel-images");
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % images.children.length;
+        images.style.transform = `translateX(-${currentIndex * 100}%)`;
+    }, 3000);
+
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 500);
+});
+
+// Test del suono manuale
+function testVoice() {
+    let mode = getAudioPreference();
+    if (mode === "synth") {
         var msg = new SpeechSynthesisUtterance("Audio attivato");
         msg.voice = selectedVoice;
         msg.rate = 0.6;
         msg.pitch = 1.2;
         window.speechSynthesis.speak(msg);
+    } else {
+        audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
     }
+}
+
 </script>
 </head>
 <body>
@@ -283,6 +308,12 @@
         {% endfor %}
     </div>
     <button class="voice-test" onclick="testVoice()">🔊 Test Voce</button>
+	<label for="audioMode">Modalità Audio:</label>
+<select id="audioMode" onchange="saveAudioPreference()">
+    <option value="synth">🔊 Speaker (Sintesi Vocale)</option>
+    <option value="file">🎵 File Audio</option>
+</select>
+
 </div>
 
 </body>
