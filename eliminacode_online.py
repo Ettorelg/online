@@ -1158,6 +1158,9 @@ def get_ticket():
     print(f"📢 DEBUG: Richiesta ricevuta per reparto ID {reparto_id}")  # <-- Aggiunto per debug
     return jsonify(get_ticket_data(reparto_id))
 
+@app.route("/download/<filename>")
+def download_file(filename):
+    return send_from_directory("downloads", filename, as_attachment=True)
 
 if __name__ == "__main__":
     db = Database()
