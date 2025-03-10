@@ -60,28 +60,29 @@
         }
         /* Parte inferiore per immagini a scorrimento */
         .carousel-container {
-            flex: 1;
-            width: 100%;
-            display: flex;
-            overflow: hidden;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-
-        .carousel-images {
-            display: flex;
-            transition: transform 1s ease-in-out;
-            width: 300%;
-        }
-
-        .carousel-images img {
-            width: 100%;
-            height: auto;
-            object-fit: cover;
-            border-radius: 10px;
-            border: 2px solid #ffcc00;
-        }
+	    width: 100%;
+	    height: 100%;
+	    overflow: hidden;
+	    position: relative;
+	    display: flex;
+	    align-items: center;
+	    justify-content: center;
+	}
+	
+	.carousel-images {
+	    display: flex;
+	    transition: transform 1s ease-in-out;
+	    width: 100%;
+	    height: 100%;
+	}
+	
+	.carousel-images img {
+	    width: 100%;
+	    height: 100%;
+	    object-fit: contain; /* Evita il ritaglio dell'immagine */
+	    border-radius: 10px;
+	    border: 2px solid #ffcc00;
+	}
 
 
         /* Sezione destra (Ticket Chiamati) aumentata al 60% */
