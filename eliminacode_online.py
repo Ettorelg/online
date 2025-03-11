@@ -998,16 +998,9 @@ def gestione_ticket():
     db.close()
     return render_template("gestione_ticket.html", reparti=reparti, numeri_ticket=numeri_ticket)
 
-@app.route("/visualizza_ticket_qr")
-def visualizza_ticket_qr():
-    return render_template("visualizza_ticket_qr.html")
-
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
-    if "user_id" not in session:
-    return redirect("/login")
 
-    user_id = session["user_id"]
     db = Database()
 
     # Recupera solo i reparti con visibile_qr = TRUE
