@@ -1004,10 +1004,6 @@ def visualizza_ticket_qr():
 
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    user_id = session["user_id"]
     db = Database()
 
     # Recupera solo i reparti con visibile_qr = TRUE
@@ -1015,10 +1011,10 @@ def ritira_ticket_qr():
         SELECT id, nome 
         FROM reparti 
         WHERE id_licenza IN (
-            SELECT id FROM licenze WHERE id_utente = %s
+            SELECT id FROM licenze
         )
         AND visibile_qr = TRUE
-    """, (user_id,))
+    """)
 
     if request.method == "POST":
         reparti_selezionati = request.form.getlist("reparto")  # Ottiene tutti i reparti selezionati
