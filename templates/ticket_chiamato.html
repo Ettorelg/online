@@ -232,14 +232,17 @@ socket.on("update_tickets", function(numeri) {
 
 // Genera il QR Code con l'ID utente
 function generateQRCode() {
+    console.log("📢 Tentativo di generare il QR Code...");
+
     let qrContainer = document.getElementById("qrcode");
     qrContainer.innerHTML = ""; 
-    let size = qrContainer.offsetWidth; 
+    let size = qrContainer.offsetWidth;
 
     let userId = "{{ user_id }}";
 
-    if (!userId || userId.trim() === "") {
-        console.error("❌ Errore: user_id non è definito.");
+    if (!userId || userId.trim() === "" || userId === "None") {
+        console.error("❌ ERRORE: user_id non è definito.");
+        qrContainer.innerHTML = "<p style='color: red;'>Errore: ID utente mancante</p>";
         return;
     }
 
@@ -251,6 +254,11 @@ function generateQRCode() {
 
     console.log("✅ QR Code generato con successo per user_id:", userId);
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+    console.log("📢 Pagina caricata, generazione QR Code...");
+    setTimeout(generateQRCode, 1000);
+});
 
 // Inizializza il carosello di immagini
 function startCarousel() {
