@@ -160,6 +160,10 @@
         secure: true,
         reconnection: true
     });
+	function getUserIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("user");
+}
 
     var selectedVoice = null;
     var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
@@ -224,27 +228,27 @@
         return urlParams.get("user");
     }
 
-    function generateQRCode() {
-        const qrContainer = document.getElementById("qrcode");
-        qrContainer.innerHTML = "";
-        const size = qrContainer.offsetWidth;
+	function generateQRCode() {
+		const qrContainer = document.getElementById("qrcode");
+		qrContainer.innerHTML = "";
+		const size = qrContainer.offsetWidth;
 
-        const userId = getUserIdFromUrl();
-        if (!userId) {
-            console.error("❌ Errore: parametro 'user' non presente nell'URL.");
-            return;
-        }
+		const userId = getUserIdFromUrl();
+		if (!userId) {
+			console.error("❌ Errore: parametro 'user' non presente nell'URL.");
+			return;
+		}
 
-        const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
+		const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
 
-        new QRCode(qrContainer, {
-            text: qrUrl,
-            width: size,
-            height: size
-        });
+		new QRCode(qrContainer, {
+			text: qrUrl,
+			width: size,
+			height: size
+		});
 
-        console.log("✅ QR Code generato:", qrUrl);
-    }
+		console.log("✅ QR Code generato:", qrUrl);
+	}
 
     function testVoice() {
         let mode = getAudioPreference();
