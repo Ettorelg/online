@@ -817,7 +817,7 @@ def ritira_ticket():
 
     if request.method == "GET":
         db.close()
-        return render_template("ritira_ticket.html", reparti=reparti)
+        return render_template("ritira_ticket.html", reparti=reparti, user_id=user_id)
 
     # 🔹 Se la richiesta è POST, elabora il ticket
     try:
