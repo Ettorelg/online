@@ -1006,36 +1006,62 @@ def visualizza_ticket_qr():
 def ritira_ticket_qr():
     db = Database()
 
-    # Ottieni l'ID dell'utente dal parametro dell'URL
-    user_id = request.args.get("user")
+        # Ottieni l'user_id dalla query string
+    if request.method == "GET":
+        user_id = request.args.get("user", type=int)
+    else:
+        user_id = request.form.get("user", type=int)
 
     if not user_id:
-        return "Errore: nessun utente specificato nel QR code.", 400
+        return jsonify({"success": False, "message": "Dati mancanti: user_id non trovato"}), 400
 
-    # Recupera solo i reparti associati all'utente specificato nel QR code e con visibile_qr = TRUE
+    # Recupera solo i reparti con visibile_qr = TRUE per l'utente specificato
     reparti = db.execute_query("""
         SELECT id, nome 
-        FROM reparti
-        WHERE id_licenza IN (SELECT id FROM licenze WHERE id_utente = %s)
+        FROM reparti 
+        WHERE id_licenza IN (
+            SELECT id FROM licenze WHERE id_utente = %s
+        )
         AND visibile_qr = TRUE
     """, (user_id,))
 
     if request.method == "POST":
         reparto_id = request.form.get("reparto")
-        if reparto_id:
-            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
-            ticket_number = (result[0][0] + 1) if result else 1
+        user_id = request.form.get("user")
 
-            db.execute_query(
-                "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
-                (ticket_number, reparto_id), commit=True
-            )
-
+        if not reparto_id or not user_id:
             db.close()
-            return redirect(f"/visualizza_ticket/{reparto_id}/{ticket_number}")
+            return jsonify({"success": False, "message": "Dati mancanti"}), 400
+
+        reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+        reparto_nome = reparto_nome_result[0][0] if reparto_nome_result else None
+
+        result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+        ticket_number = (result[0][0] + 1) if result else 1
+
+        db.execute_query(
+            "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
+            (ticket_number, reparto_id), commit=True
+        )
+
+        db.close()
+
+        return jsonify({
+            "reparto_id": reparto_id,
+            "reparto_nome": reparto_nome,
+            "ticket_number": ticket_number
+        })
+
+
+        db.close()
+
+        if not ticket_dati:
+            return jsonify({"success": False, "message": "Errore nel generare i ticket"}), 500
+
+        return render_template("visualizza_tutti_ticket.html", tickets=ticket_dati)
 
     db.close()
-    return render_template("ritira_ticket_qr.html", reparti=reparti)
+    return render_template("ritira_ticket_qr.html", reparti=reparti, user_id=user_id)
 
 from escpos.printer import Network
 import time
@@ -1133,6 +1159,9 @@ def get_ticket():
     print(f"📢 DEBUG: Richiesta ricevuta per reparto ID {reparto_id}")  # <-- Aggiunto per debug
     return jsonify(get_ticket_data(reparto_id))
 
+@app.route("/download/<filename>")
+def download_file(filename):
+    return send_from_directory("downloads", filename, as_attachment=True)
 
 if __name__ == "__main__":
     db = Database()
