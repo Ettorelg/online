@@ -17,7 +17,6 @@
             height: 100vh;
         }
 
-        /* Sezione sinistra (QR Code e immagini) ridotta al 40% */
         .left-section {
             display: flex;
             flex-direction: column;
@@ -29,25 +28,21 @@
             border-right: 2px solid #ffcc00;
         }
 
-        /* Parte superiore per QR Code */
         .qrcode-wrapper {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             align-items: center;
             width: 100%;
-            flex-grow: 1; /* Occupa lo spazio disponibile fino alla metà della pagina */
             max-height: 40%;
-			margin-bottom: 10px; /* Aggiunto spazio tra QR e carosello */
+            margin-bottom: 10px;
         }
 
         .qrcode-container {
-            flex-grow: 1; /* Il QR code occupa tutto lo spazio rimanente */
             display: flex;
             justify-content: center;
             align-items: center;
             width: 50%;
-            max-width: 350px; /* Limite massimo per evitare distorsioni */
+            max-width: 350px;
             aspect-ratio: 1 / 1;
         }
 
@@ -58,7 +53,7 @@
             padding: 10px;
             border-radius: 10px;
         }
-        /* Parte inferiore per immagini a scorrimento */
+
         .carousel-container {
             flex: 1;
             width: 100%;
@@ -83,8 +78,6 @@
             border: 2px solid #ffcc00;
         }
 
-
-        /* Sezione destra (Ticket Chiamati) aumentata al 60% */
         .right-section {
             display: flex;
             flex-direction: column;
@@ -94,6 +87,7 @@
             padding: 20px;
             background-color: #000;
         }
+
         .reparti-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -135,14 +129,8 @@
         }
 
         @keyframes pulse {
-            from {
-                transform: scale(1);
-                background-color: #ffcc00;
-            }
-            to {
-                transform: scale(1.2);
-                background-color: #ff3300;
-            }
+            from { transform: scale(1); background-color: #ffcc00; }
+            to { transform: scale(1.2); background-color: #ff3300; }
         }
 
         .voice-test {
@@ -151,116 +139,105 @@
             right: 20px;
             background: none;
             border: none;
+            color: white;
+            font-size: 20px;
             cursor: pointer;
         }
     </style>
-<script>
-    var socket = io();
-    var selectedVoice = null;
 
-    function loadVoices() {
-        var voices = window.speechSynthesis.getVoices();
-        console.log("🔊 Voci disponibili:", voices);
+    <script>
+        var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
+            transports: ["websocket"],
+            reconnection: true
+        });
 
-        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-                        voices.find(v => v.name.includes("Google italiano femminile")) ||
-                        voices.find(v => v.name.includes("Alice")) ||
-                        voices.find(v => v.name.toLowerCase().includes("female")) ||
-                        voices.find(v => v.lang === "it-IT");
+        var selectedVoice = null;
 
-        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
-    }
+        socket.on("update_tickets", function(numeri) {
+            for (var reparto in numeri) {
+                var ticketElement = document.getElementById("ticket-" + reparto);
+                if (ticketElement) {
+                    var oldNumber = ticketElement.innerText;
+                    ticketElement.innerText = numeri[reparto];
 
-    function announceNumber(number, reparto) {
-        var msg = new SpeechSynthesisUtterance("Numero " + number);
-        msg.voice = selectedVoice;
-        msg.rate = 0.7;
-        msg.pitch = 1.0;
-        window.speechSynthesis.speak(msg);
-    }
-
-    function highlightNumber(element) {
-        element.classList.add("highlight");
-        setTimeout(() => element.classList.remove("highlight"), 5000);
-    }
-
-    socket.on("update_tickets", function(numeri) {
-        for (var reparto in numeri) {
-            var ticketElement = document.getElementById("ticket-" + reparto);
-            if (ticketElement) {
-                var oldNumber = ticketElement.innerText;
-                ticketElement.innerText = numeri[reparto];
-
-                if (oldNumber != numeri[reparto]) {
-                    highlightNumber(ticketElement);
-                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                    if (oldNumber != numeri[reparto]) {
+                        highlightNumber(ticketElement);
+                        announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                    }
                 }
             }
+        });
+
+        function highlightNumber(element) {
+            element.classList.add("highlight");
+            setTimeout(() => element.classList.remove("highlight"), 5000);
         }
-    });
 
-    document.addEventListener("DOMContentLoaded", function () {
-        let qrContainer = document.getElementById("qrcode");
+        function announceNumber(number, reparto) {
+            var msg = new SpeechSynthesisUtterance("Numero " + number);
+            msg.voice = selectedVoice;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        }
 
-        function generateQRCode() {
-            qrContainer.innerHTML = ""; // Svuota il contenitore
-            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+        function loadVoices() {
+            var voices = window.speechSynthesis.getVoices();
+            selectedVoice = voices.find(v => v.lang === "it-IT") || voices[0];
+        }
 
-            // 🔹 Ottieni l'ID dell'utente dal backend
-            let userId = "{{ user_id }}";
+        function testVoice() {
+            var msg = new SpeechSynthesisUtterance("Audio attivato");
+            msg.voice = selectedVoice;
+            msg.rate = 0.6;
+            msg.pitch = 1.2;
+            window.speechSynthesis.speak(msg);
+        }
 
-            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
-            if (!userId || userId.trim() === "") {
-                console.error("❌ Errore: user_id non è definito.");
-                return;
+        document.addEventListener("DOMContentLoaded", function () {
+            let qrContainer = document.getElementById("qrcode");
+
+            function generateQRCode() {
+                qrContainer.innerHTML = "";
+                let size = qrContainer.offsetWidth;
+                let userId = "{{ user_id }}";
+
+                if (!userId || userId.trim() === "") {
+                    console.error("❌ Errore: user_id non è definito.");
+                    return;
+                }
+
+                new QRCode(qrContainer, {
+                    text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                    width: size,
+                    height: size
+                });
             }
 
-            // 🔹 Genera il QR Code con l'ID dell'utente
-            new QRCode(qrContainer, {
-                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-                width: size,
-                height: size
-            });
+            setTimeout(generateQRCode, 100);
 
-            console.log("✅ QR Code generato con successo per user_id:", userId);
-        }
+            // carousel
+            let currentIndex = 0;
+            const images = document.querySelector(".carousel-images");
+            setInterval(() => {
+                currentIndex = (currentIndex + 1) % images.children.length;
+                images.style.transform = `translateX(-${currentIndex * 100}%)`;
+            }, 3000);
 
-        // 🔹 Genera il QR Code dopo il caricamento della pagina
-        setTimeout(generateQRCode, 100);
-
-        // Scorrimento immagini
-        let currentIndex = 0;
-        const images = document.querySelector(".carousel-images");
-        setInterval(() => {
-            currentIndex = (currentIndex + 1) % images.children.length;
-            images.style.transform = `translateX(-${currentIndex * 100}%)`;
-        }, 3000);
-
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        setTimeout(loadVoices, 500);
-    });
-
-    function testVoice() {
-        var msg = new SpeechSynthesisUtterance("Audio attivato");
-        msg.voice = selectedVoice;
-        msg.rate = 0.6;
-        msg.pitch = 1.2;
-        window.speechSynthesis.speak(msg);
-    }
-</script>
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            setTimeout(loadVoices, 500);
+        });
+    </script>
 </head>
-<body>
 
+<body>
 <div class="left-section">
-    <!-- QR Code in alto, adattabile allo spazio rimanente -->
     <div class="qrcode-wrapper">
         <h2>📷 Scansiona il QR Code per ritirare un ticket</h2>
         <div class="qrcode-container">
             <div class="qrcode" id="qrcode"></div>
         </div>
     </div>
-
-    <!-- Immagini a scorrimento in basso -->
     <div class="carousel-container">
         <div class="carousel-images">
             {% for immagine in immagini %}
@@ -284,6 +261,5 @@
     </div>
     <button class="voice-test" onclick="testVoice()">🔊 Test Voce</button>
 </div>
-
 </body>
 </html>
