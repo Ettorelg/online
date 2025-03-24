@@ -232,24 +232,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let qrContainer = document.getElementById("qrcode");
 
-    function generateQRCode() {
-        qrContainer.innerHTML = "";
-        let size = qrContainer.offsetWidth;
-        let userId = "{{ user_id }}";
+	function getUserIdFromUrl() {
+		const urlParams = new URLSearchParams(window.location.search);
+		return urlParams.get("user");
+	}
 
-        if (!userId || userId.trim() === "") {
-            console.error("❌ Errore: user_id non è definito.");
-            return;
-        }
+	function generateQRCode() {
+		const qrContainer = document.getElementById("qrcode");
+		qrContainer.innerHTML = "";
+		const size = qrContainer.offsetWidth;
 
-        new QRCode(qrContainer, {
-            text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-            width: size,
-            height: size
-        });
+		const userId = getUserIdFromUrl();
+		if (!userId) {
+			console.error("❌ Errore: parametro 'user' non presente nell'URL.");
+			return;
+		}
 
-        console.log("✅ QR Code generato con successo per user_id:", userId);
-    }
+		const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
+
+		new QRCode(qrContainer, {
+			text: qrUrl,
+			width: size,
+			height: size
+		});
+
+		console.log("✅ QR Code generato:", qrUrl);
+	}
 
     setTimeout(generateQRCode, 100);
 
