@@ -155,135 +155,129 @@
         }
     </style>
 <script>
-var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
-    transports: ["websocket"],
-    secure: true,
-    reconnection: true
-});
+    var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
+        transports: ["websocket"],
+        secure: true,
+        reconnection: true
+    });
 
-var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
-var selectedVoice = null;
+    var selectedVoice = null;
+    var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
 
-function getAudioPreference() {
-    return localStorage.getItem("audioMode") || "synth"; 
-}
-
-function saveAudioPreference() {
-    let mode = document.getElementById("audioMode").value;
-    localStorage.setItem("audioMode", mode);
-    console.log("🎵 Modalità audio salvata:", mode);
-}
-
-function loadVoices() {
-    var voices = window.speechSynthesis.getVoices();
-    selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-                    voices.find(v => v.name.includes("Google italiano femminile")) ||
-                    voices.find(v => v.name.includes("Alice")) ||
-                    voices.find(v => v.name.toLowerCase().includes("female")) ||
-                    voices.find(v => v.lang === "it-IT");
-    console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
-}
-
-function announceNumber(number, reparto) {
-    let mode = getAudioPreference();
-
-    if (mode === "synth" && 'speechSynthesis' in window) {
-        var msg = new SpeechSynthesisUtterance("Numero " + number);
-        msg.voice = selectedVoice;
-        msg.rate = 0.7;
-        msg.pitch = 1.0;
-        window.speechSynthesis.speak(msg);
-    } else {
-        audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+    function getAudioPreference() {
+        return localStorage.getItem("audioMode") || "synth"; 
     }
-}
 
-function highlightNumber(element) {
-    element.classList.add("highlight");
-    setTimeout(() => element.classList.remove("highlight"), 5000);
-}
+    function saveAudioPreference() {
+        let mode = document.getElementById("audioMode").value;
+        localStorage.setItem("audioMode", mode);
+        console.log("🎵 Modalità audio salvata:", mode);
+    }
 
-socket.on("connect", () => {
-    console.log("✅ Socket connesso con successo");
-});
+    function loadVoices() {
+        var voices = window.speechSynthesis.getVoices();
+        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                        voices.find(v => v.name.includes("Google italiano femminile")) ||
+                        voices.find(v => v.name.includes("Alice")) ||
+                        voices.find(v => v.name.toLowerCase().includes("female")) ||
+                        voices.find(v => v.lang === "it-IT");
 
-socket.on("connect_error", (err) => {
-    console.error("❌ Errore di connessione socket:", err.message);
-});
+        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+    }
 
-socket.on("update_tickets", function(numeri) {
-    for (var reparto in numeri) {
-        var ticketElement = document.getElementById("ticket-" + reparto);
-        if (ticketElement) {
-            var oldNumber = ticketElement.innerText;
-            ticketElement.innerText = numeri[reparto];
+    function announceNumber(number, reparto) {
+        let mode = getAudioPreference();
 
-            if (oldNumber != numeri[reparto]) {
-                highlightNumber(ticketElement);
-                announceNumber(numeri[reparto], ticketElement.dataset.reparto);
-            }
+        if (mode === "synth" && 'speechSynthesis' in window) {
+            var msg = new SpeechSynthesisUtterance("Numero " + number);
+            msg.voice = selectedVoice;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
         }
     }
-});
 
-document.addEventListener("DOMContentLoaded", function () {
-    let mode = getAudioPreference();
-    document.getElementById("audioMode").value = mode;
-
-    let qrContainer = document.getElementById("qrcode");
-
-	function getUserIdFromUrl() {
-		const urlParams = new URLSearchParams(window.location.search);
-		return urlParams.get("user");
-	}
-
-	function generateQRCode() {
-		const qrContainer = document.getElementById("qrcode");
-		qrContainer.innerHTML = "";
-		const size = qrContainer.offsetWidth;
-
-		const userId = getUserIdFromUrl();
-		if (!userId) {
-			console.error("❌ Errore: parametro 'user' non presente nell'URL.");
-			return;
-		}
-
-		const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
-
-		new QRCode(qrContainer, {
-			text: qrUrl,
-			width: size,
-			height: size
-		});
-
-		console.log("✅ QR Code generato:", qrUrl);
-	}
-
-    setTimeout(generateQRCode, 100);
-
-    let currentIndex = 0;
-    const images = document.querySelector(".carousel-images");
-    setInterval(() => {
-        currentIndex = (currentIndex + 1) % images.children.length;
-        images.style.transform = `translateX(-${currentIndex * 100}%)`;
-    }, 3000);
-
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    setTimeout(loadVoices, 500);
-});
-
-function testVoice() {
-    let mode = getAudioPreference();
-    if (mode === "synth") {
-        var msg = new SpeechSynthesisUtterance("Audio attivato");
-        msg.voice = selectedVoice;
-        msg.rate = 0.6;
-        msg.pitch = 1.2;
-        window.speechSynthesis.speak(msg);
-    } else {
-        audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+    function highlightNumber(element) {
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 5000);
     }
-}
+
+    socket.on("update_tickets", function(numeri) {
+        for (var reparto in numeri) {
+            var ticketElement = document.getElementById("ticket-" + reparto);
+            if (ticketElement) {
+                var oldNumber = ticketElement.innerText;
+                ticketElement.innerText = numeri[reparto];
+
+                if (oldNumber != numeri[reparto]) {
+                    highlightNumber(ticketElement);
+                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                }
+            }
+        }
+    });
+
+    function getUserIdFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get("user");
+    }
+
+    function generateQRCode() {
+        const qrContainer = document.getElementById("qrcode");
+        qrContainer.innerHTML = "";
+        const size = qrContainer.offsetWidth;
+
+        const userId = getUserIdFromUrl();
+        if (!userId) {
+            console.error("❌ Errore: parametro 'user' non presente nell'URL.");
+            return;
+        }
+
+        const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
+
+        new QRCode(qrContainer, {
+            text: qrUrl,
+            width: size,
+            height: size
+        });
+
+        console.log("✅ QR Code generato:", qrUrl);
+    }
+
+    function testVoice() {
+        let mode = getAudioPreference();
+        if (mode === "synth") {
+            var msg = new SpeechSynthesisUtterance("Audio attivato");
+            msg.voice = selectedVoice;
+            msg.rate = 0.6;
+            msg.pitch = 1.2;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        generateQRCode();
+
+        let currentIndex = 0;
+        const images = document.querySelector(".carousel-images");
+        setInterval(() => {
+            currentIndex = (currentIndex + 1) % images.children.length;
+            images.style.transform = `translateX(-${currentIndex * 100}%)`;
+        }, 3000);
+
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        setTimeout(loadVoices, 500);
+
+        // Applica preferenza salvata
+        const audioModeSelect = document.getElementById("audioMode");
+        if (audioModeSelect) {
+            audioModeSelect.value = getAudioPreference();
+        }
+    });
 </script>
 
 </head>
@@ -331,6 +325,12 @@ function testVoice() {
         <span id="synthMode" class="audio-icon active" onclick="setAudioMode('synth')" style="font-size: 24px; cursor: pointer; opacity: 1; transition: transform 0.2s, opacity 0.2s;">🔊</span>
         <span id="fileMode" class="audio-icon" onclick="setAudioMode('file')" style="font-size: 24px; cursor: pointer; opacity: 0.5; transition: transform 0.2s, opacity 0.2s;">🎵</span>
     </div>
+	 <label for="audioMode" style="display: block; font-size: 14px;">Modalità Audio:</label>
+    <select id="audioMode" onchange="saveAudioPreference()" style="font-size: 14px; padding: 5px; border-radius: 5px;">
+        <option value="synth">🔊 Sintesi Vocale</option>
+        <option value="file">🎵 File Audio</option>
+    </select>
+	
 </div>
 
 
