@@ -223,26 +223,9 @@
         }
     });
 
-    function getUserIdFromUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get("user");
-    }
 
-	function generateQRCode() {
-		const qrContainer = document.getElementById("qrcode");
-		qrContainer.innerHTML = "";
-		const size = qrContainer.offsetWidth;
 
-		const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
 
-		new QRCode(qrContainer, {
-			text: qrUrl,
-			width: size,
-			height: size
-		});
-
-		console.log("✅ QR Code generato:", qrUrl);
-	}
 
     function testVoice() {
         let mode = getAudioPreference();
@@ -258,8 +241,35 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        generateQRCode();
+        let qrContainer = document.getElementById("qrcode");
 
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+
+            // 🔹 Ottieni l'ID dell'utente dal backend
+            let userId = "{{ user_id }}";
+
+            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code con l'ID dell'utente
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+
+            console.log("✅ QR Code generato con successo per user_id:", userId);
+        }
+
+        // 🔹 Genera il QR Code dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+
+        // Scorrimento immagini
         let currentIndex = 0;
         const images = document.querySelector(".carousel-images");
         setInterval(() => {
@@ -269,13 +279,12 @@
 
         window.speechSynthesis.onvoiceschanged = loadVoices;
         setTimeout(loadVoices, 500);
-
-        // Applica preferenza salvata
-        const audioModeSelect = document.getElementById("audioMode");
+		const audioModeSelect = document.getElementById("audioMode");
         if (audioModeSelect) {
             audioModeSelect.value = getAudioPreference();
         }
     });
+	
 </script>
 
 </head>
