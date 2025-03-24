@@ -233,12 +233,6 @@
 		qrContainer.innerHTML = "";
 		const size = qrContainer.offsetWidth;
 
-		const userId = getUserIdFromUrl();
-		if (!userId) {
-			console.error("❌ Errore: parametro 'user' non presente nell'URL.");
-			return;
-		}
-
 		const qrUrl = "https://zestful-flow-pregettoonline.up.railway.app/ritira_ticket_qr?user=" + userId;
 
 		new QRCode(qrContainer, {
