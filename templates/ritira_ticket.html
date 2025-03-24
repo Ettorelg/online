@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <title>Ritira Ticket</title>
     <style>
         body {
@@ -12,14 +15,45 @@
             padding: 20px;
             background-color: #f9f9f9;
         }
-        .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
-            margin: auto;
-            padding: 20px;
-        }
+		.page-layout {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: flex-start;
+			justify-content: center;
+			gap: 30px;
+			max-width: 1200px;
+			margin: auto;
+			padding: 20px;
+		}
+
+		.qr-section {
+			flex: 0 0 300px;
+			background-color: #fff;
+			padding: 20px;
+			border-radius: 12px;
+			box-shadow: 0 0 10px rgba(0,0,0,0.1);
+			text-align: center;
+		}
+
+		.qr-section h3 {
+			margin-bottom: 15px;
+		}
+
+		#qrcode {
+			width: 100%;
+			aspect-ratio: 1;
+			background: white;
+			padding: 10px;
+			border-radius: 10px;
+		}
+
+		.container {
+			flex: 1;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+			gap: 20px;
+		}
+
         .reparto-container {
             background: white;
             padding: 25px;
@@ -88,49 +122,22 @@
         }
     </style>
 
-<script>
-function prendiTicket(repartoId) {
-    console.log("📢 DEBUG: Reparto selezionato ID =", repartoId); // <-- Verifica se l'ID è corretto prima della richiesta
-
-    fetch(`/api/get_ticket?reparto_id=${repartoId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                var ip = data.ip_stampante;
-                var repartoNome = data.reparto;
-                var ticketNumber = data.numero_ticket;
-
-                console.log("✅ Ticket ricevuto: ", ip, repartoNome, ticketNumber);
-
-                if (!ip) {
-                    alert("❌ Nessuna stampante associata a questo reparto!");
-                    console.error("❌ IP della stampante mancante. Stampa bloccata.");
-                    return;
-                }
-
-                if (typeof window.Android !== "undefined" && typeof window.Android.printTicket === "function") {
-                    window.Android.printTicket(ip, repartoNome, ticketNumber);
-                } else {
-                    alert("⚠️ Errore: interfaccia Android non trovata!");
-                    console.error("❌ window.Android.printTicket non è disponibile.");
-                }
-            } else {
-                alert("Errore nel recupero del ticket.");
-            }
-        })
-        .catch(error => {
-            console.error("Errore nella richiesta:", error);
-            alert("Errore di connessione al server.");
-        });
-}
-</script>
 
 </head>
 
 <body>
 
-    <h2 style="font-size: 32px; margin-bottom: 20px;">Ritira il tuo Ticket</h2>
+<h2 style="font-size: 32px; margin-bottom: 20px;">Ritira il tuo Ticket</h2>
 
+<div class="page-layout">
+
+    <!-- 🔹 Sezione QR Code -->
+    <div class="qr-section">
+        <h3>📲 Il tuo QR Code</h3>
+        <div id="qrcode"></div>
+    </div>
+
+    <!-- 🔹 Lista reparti -->
     <div class="container">
         {% for reparto in reparti %}
         <div class="reparto-container">
@@ -142,5 +149,65 @@ function prendiTicket(repartoId) {
         {% endfor %}
     </div>
 
+</div>
+
+<!-- Audio opzionale -->
+<audio id="beep-sound">
+    <source src="/static/ding.mp3" type="audio/wav">
+</audio>
+
+<script>
+function prendiTicket(repartoId) {
+    console.log("📢 DEBUG: Reparto selezionato ID =", repartoId);
+
+    fetch(`/api/get_ticket?reparto_id=${repartoId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const ip = data.ip_stampante;
+                const repartoNome = data.reparto;
+                const ticketNumber = data.numero_ticket;
+
+                console.log("✅ Ticket ricevuto:", ip, repartoNome, ticketNumber);
+
+                if (!ip) {
+                    alert("❌ Nessuna stampante associata a questo reparto!");
+                    return;
+                }
+
+                if (typeof window.Android !== "undefined" && typeof window.Android.printTicket === "function") {
+                    window.Android.printTicket(ip, repartoNome, ticketNumber);
+                } else {
+                    alert("⚠️ Errore: interfaccia Android non trovata!");
+                }
+            } else {
+                alert("Errore nel recupero del ticket.");
+            }
+        })
+        .catch(error => {
+            console.error("Errore nella richiesta:", error);
+            alert("Errore di connessione al server.");
+        });
+}
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const qrDiv = document.getElementById("qrcode");
+    const userId = "{{ user_id }}";
+
+    if (!userId || userId.includes("{")) {
+        console.error("❌ user_id non definito correttamente da Flask");
+    } else {
+        new QRCode(qrDiv, {
+            text: `${window.location.origin}/ritira_ticket_qr?user=${userId}`,
+            width: 200,
+            height: 200
+        });
+    }
+});
+</script>
+
+
 </body>
+
 </html>
