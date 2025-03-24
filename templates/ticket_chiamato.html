@@ -156,31 +156,24 @@
     </style>
 <script>
 var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
-	transports: ["websocket"],
-	reconnection: true
+    transports: ["websocket"],
+    secure: true,
+    reconnection: true
 });
+
 var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
 var selectedVoice = null;
 
-// Recupera la preferenza dell'utente (default: "synth" per Sintesi Vocale)
 function getAudioPreference() {
     return localStorage.getItem("audioMode") || "synth"; 
 }
 
-// Imposta la modalità audio e aggiorna lo stile delle icone
-function setAudioMode(mode) {
+function saveAudioPreference() {
+    let mode = document.getElementById("audioMode").value;
     localStorage.setItem("audioMode", mode);
-
-    document.getElementById("synthMode").style.opacity = (mode === "synth") ? "1" : "0.5";
-    document.getElementById("synthMode").style.transform = (mode === "synth") ? "scale(1.2)" : "scale(1)";
-    
-    document.getElementById("fileMode").style.opacity = (mode === "file") ? "1" : "0.5";
-    document.getElementById("fileMode").style.transform = (mode === "file") ? "scale(1.2)" : "scale(1)";
-
-    console.log("🎵 Modalità audio selezionata:", mode);
+    console.log("🎵 Modalità audio salvata:", mode);
 }
 
-// Carica le voci disponibili per la sintesi vocale
 function loadVoices() {
     var voices = window.speechSynthesis.getVoices();
     selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
@@ -188,20 +181,14 @@ function loadVoices() {
                     voices.find(v => v.name.includes("Alice")) ||
                     voices.find(v => v.name.toLowerCase().includes("female")) ||
                     voices.find(v => v.lang === "it-IT");
-
     console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
 }
 
-// Attende il caricamento delle voci e le imposta
-window.speechSynthesis.onvoiceschanged = loadVoices;
-setTimeout(loadVoices, 500);
-
-// Annuncia il numero chiamato usando la modalità selezionata
 function announceNumber(number, reparto) {
     let mode = getAudioPreference();
 
-    if (mode === "synth" && 'speechSynthesis' in window && selectedVoice) {
-        var msg = new SpeechSynthesisUtterance(`Numero ${number} per ${reparto}`);
+    if (mode === "synth" && 'speechSynthesis' in window) {
+        var msg = new SpeechSynthesisUtterance("Numero " + number);
         msg.voice = selectedVoice;
         msg.rate = 0.7;
         msg.pitch = 1.0;
@@ -211,13 +198,19 @@ function announceNumber(number, reparto) {
     }
 }
 
-// Evidenzia il numero chiamato
 function highlightNumber(element) {
     element.classList.add("highlight");
     setTimeout(() => element.classList.remove("highlight"), 5000);
 }
 
-// Riceve aggiornamenti sui ticket chiamati
+socket.on("connect", () => {
+    console.log("✅ Socket connesso con successo");
+});
+
+socket.on("connect_error", (err) => {
+    console.error("❌ Errore di connessione socket:", err.message);
+});
+
 socket.on("update_tickets", function(numeri) {
     for (var reparto in numeri) {
         var ticketElement = document.getElementById("ticket-" + reparto);
@@ -233,59 +226,47 @@ socket.on("update_tickets", function(numeri) {
     }
 });
 
-// Genera il QR Code con l'ID utente
-function generateQRCode() {
-    console.log("📢 Tentativo di generare il QR Code...");
+document.addEventListener("DOMContentLoaded", function () {
+    let mode = getAudioPreference();
+    document.getElementById("audioMode").value = mode;
 
     let qrContainer = document.getElementById("qrcode");
-    qrContainer.innerHTML = ""; 
-    let size = qrContainer.offsetWidth;
 
-    let userId = "{{ user_id }}";
+    function generateQRCode() {
+        qrContainer.innerHTML = "";
+        let size = qrContainer.offsetWidth;
+        let userId = "{{ user_id }}";
 
-    if (!userId || userId.trim() === "" || userId === "None") {
-        console.error("❌ ERRORE: user_id non è definito.");
-        qrContainer.innerHTML = "<p style='color: red;'>Errore: ID utente mancante</p>";
-        return;
+        if (!userId || userId.trim() === "") {
+            console.error("❌ Errore: user_id non è definito.");
+            return;
+        }
+
+        new QRCode(qrContainer, {
+            text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+            width: size,
+            height: size
+        });
+
+        console.log("✅ QR Code generato con successo per user_id:", userId);
     }
 
-    new QRCode(qrContainer, {
-        text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-        width: size,
-        height: size
-    });
+    setTimeout(generateQRCode, 100);
 
-    console.log("✅ QR Code generato con successo per user_id:", userId);
-}
-	
-document.addEventListener("DOMContentLoaded", function () {
-    console.log("📢 Pagina caricata, generazione QR Code...");
-    setTimeout(generateQRCode, 1000);
-});
-
-// Inizializza il carosello di immagini
-function startCarousel() {
     let currentIndex = 0;
     const images = document.querySelector(".carousel-images");
-    if (images && images.children.length > 0) {
-        setInterval(() => {
-            currentIndex = (currentIndex + 1) % images.children.length;
-            images.style.transform = `translateX(-${currentIndex * 100}%)`;
-        }, 3000);
-    }
-}
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % images.children.length;
+        images.style.transform = `translateX(-${currentIndex * 100}%)`;
+    }, 3000);
 
-// Caricamento iniziale
-document.addEventListener("DOMContentLoaded", function () {
-    setAudioMode(getAudioPreference()); // Imposta la modalità audio salvata
-    setTimeout(generateQRCode, 100); // Genera QR Code
-    startCarousel(); // Avvia il carosello
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    setTimeout(loadVoices, 500);
 });
 
-// Test del suono manuale
 function testVoice() {
     let mode = getAudioPreference();
-    if (mode === "synth" && selectedVoice) {
+    if (mode === "synth") {
         var msg = new SpeechSynthesisUtterance("Audio attivato");
         msg.voice = selectedVoice;
         msg.rate = 0.6;
