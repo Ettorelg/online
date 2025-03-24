@@ -48,21 +48,152 @@
         .ticket-button:hover {
             background: #0056b3;
         }
+        .ticket-number-box {
+            font-size: 50px;
+            font-weight: bold;
+            padding: 20px;
+            margin-top: 10px;
+            background-color: #ffcc00;
+            color: black;
+            border-radius: 10px;
+        }
+
+		.ticket-box {
+			width: 300px;
+			padding: 20px;
+			border: 2px solid #000;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+			text-align: center;
+			border-radius: 10px;
+			background: white;
+		}
+		.ticket-number {
+			font-size: 60px;
+			font-weight: bold;
+			color: #000;
+			margin: 15px 0;
+			padding: 15px;
+			background-color: #f2f2f2;
+			border: 2px solid #000;
+			border-radius: 8px;
+			display: inline-block;
+			width: 120px;
+			transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+		}
+		.highlight {
+			animation: pulse 0.5s alternate 4;
+		}
+		
+		.lampeggia {
+			animation: pulse 1s infinite alternate;
+		}
+
+		@keyframes pulse {
+			from {
+				transform: scale(1);
+				background-color: #ffcc00;
+			}
+			to {
+				transform: scale(1.2);
+				background-color: #ff3300;
+			}
+		}
+
+		
+
     </style>
 </head>
 <body>
 
-    <div class="ticket-container">
-        <h1 class="ticket-title">🎟 Ritira il tuo Ticket</h1>
-        <div class="button-container">
-            {% for reparto in reparti %}
-            <form method="POST">
-                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
-                <button type="submit" class="ticket-button">{{ reparto[1] }}</button>
-            </form>
-            {% endfor %}
-        </div>
-    </div>
+<div class="ticket-container">
+	<audio id="beep-sound">
+    <source src="/static/ding.mp3" type="audio/wav">
+	</audio>
 
-</body>
-</html>
+    <h1 class="ticket-title">🎟 Ritira il tuo Ticket</h1>
+    <div class="button-container">
+        {% for reparto in reparti %}
+        <form class="ritira-ticket-form">
+            <input type="hidden" name="reparto" value="{{ reparto[0] }}">
+            <input type="hidden" name="user" value="{{ user_id }}">
+            <button type="submit" class="ticket-button">{{ reparto[1] }}</button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    var socket = io();
+    var beep = document.getElementById("beep-sound");
+    var tickets = {};  // Mappa reparti-tickets generati via JS
+
+    document.querySelectorAll(".ritira-ticket-form").forEach(form => {
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+
+            fetch("/ritira_ticket_qr", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+			.then(data => {
+				if (data.ticket_number && data.reparto_nome) {
+					// Salva numero per confronto successivo
+					tickets[data.reparto_id] = data.ticket_number;
+
+					const ticketHTML = `
+					<div class="ticket-box">
+						<div class="ticket-title">TICKET</div>
+						<div class="ticket-info">Reparto: <strong>${data.reparto_nome}</strong></div>
+						<div class="ticket-number" id="ticket-${data.reparto_id}">${data.ticket_number}</div>
+						<div class="ticket-info">-------------------</div>
+					</div>
+				`;
+
+					form.outerHTML = ticketHTML;
+				}
+			})
+			.catch(err => {
+				console.error("Errore:", err);
+				alert("❌ Errore nel server.");
+			});
+
+        });
+    });
+
+		socket.on("update_tickets", function(numeri) {
+			console.log("🔔 Aggiornamento ticket ricevuto:", numeri);
+
+			for (var repartoId in tickets) {
+				const ticketUtente = tickets[repartoId];
+				const ticketChiamato = numeri[repartoId];
+				const ticketElement = document.getElementById("ticket-" + repartoId);
+
+				if (!ticketElement) continue;
+
+				if (typeof ticketUtente !== "undefined" && typeof ticketChiamato !== "undefined") {
+					if (ticketUtente == ticketChiamato) {
+						console.log(`🎉 Ticket CHIAMATO! Reparto ${repartoId}, Numero ${ticketUtente}`);
+						ticketElement.classList.add("lampeggia");
+						playBeep();
+					} else {
+						ticketElement.classList.remove("lampeggia");
+					}
+				}
+			}
+		});
+
+
+
+
+    function playBeep() {
+        beep.play().then(() => {
+            console.log("🔊 Beep riprodotto con successo");
+        }).catch(e => {
+            console.log("🔇 ERRORE AUDIO:", e);
+        });
+    }
+</script>
