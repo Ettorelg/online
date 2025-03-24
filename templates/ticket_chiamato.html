@@ -180,11 +180,18 @@
             msg.pitch = 1.0;
             window.speechSynthesis.speak(msg);
         }
+		function loadVoices() {
+			var voices = window.speechSynthesis.getVoices();
+			console.log("🔊 Voci disponibili:", voices);
 
-        function loadVoices() {
-            var voices = window.speechSynthesis.getVoices();
-            selectedVoice = voices.find(v => v.lang === "it-IT") || voices[0];
-        }
+			selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+							voices.find(v => v.name.includes("Google italiano femminile")) ||
+							voices.find(v => v.name.includes("Alice")) ||
+							voices.find(v => v.name.toLowerCase().includes("female")) ||
+							voices.find(v => v.lang === "it-IT");
+
+			console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+		}
 
         function testVoice() {
             var msg = new SpeechSynthesisUtterance("Audio attivato");
