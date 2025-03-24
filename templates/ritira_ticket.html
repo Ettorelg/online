@@ -120,6 +120,65 @@
                 width: 100%;
             }
         }
+		/* Per tablet (600px - 1024px) */
+@media (min-width: 600px) and (max-width: 1024px) {
+    .page-layout {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .qr-section {
+        flex: 0 0 320px;
+        margin-bottom: 20px;
+    }
+
+    .container {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+
+    .reparto-container {
+        padding: 30px;
+    }
+
+    .reparto-nome {
+        font-size: 26px;
+    }
+
+    .button-container button {
+        font-size: 24px;
+        padding: 20px;
+    }
+}
+/* Per schermi piccoli (fino a 599px) */
+@media (max-width: 599px) {
+    .page-layout {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .qr-section {
+        width: 90%;
+        margin-bottom: 20px;
+    }
+
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .reparto-container {
+        width: 90%;
+    }
+
+    .button-container button {
+        width: 100%;
+        font-size: 22px;
+        padding: 16px;
+    }
+}
+
     </style>
 
 
@@ -133,7 +192,7 @@
 
     <!-- 🔹 Sezione QR Code -->
     <div class="qr-section">
-        <h3>📲 Il tuo QR Code</h3>
+        <h3>📲 Scansiona e ritira il ticket</h3>
         <div id="qrcode"></div>
     </div>
 
