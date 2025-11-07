@@ -192,11 +192,36 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 socketio = SocketIO(app)
 
-# Inizializzazione schema DB al import del modulo (idempotente)
-with app.app_context():
-    db = Database()
-    db.crea_tabelle()
-    db.close()
+import logging, sys
+logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdout)])
+log = logging.getLogger("bootstrap")
+
+def run_db_bootstrap():
+    """Crea tabelle e allinea colonne, con log espliciti e gestione errori."""
+    try:
+        db = Database()
+        # Assicurati di lavorare nello schema 'public'
+        db.execute_query("CREATE SCHEMA IF NOT EXISTS public", commit=True)
+        db.execute_query("SET search_path TO public", commit=False)
+
+        # --- CREA TABELLE ---
+        db.crea_tabelle()  # la tua funzione con CREATE TABLE IF NOT EXISTS + COMMIT
+        # --- MIGRAZIONI SAFE (se reparti manca colonne usate nel codice) ---
+        db.execute_query("""
+            ALTER TABLE IF EXISTS reparti
+              ADD COLUMN IF NOT EXISTS visibile_ritira BOOLEAN NOT NULL DEFAULT FALSE,
+              ADD COLUMN IF NOT EXISTS visibile_qr     BOOLEAN NOT NULL DEFAULT FALSE
+        """, commit=True)
+
+        # Sanity check: prova a leggere una tabella chiave
+        db.execute_query("SELECT 1 FROM utenti LIMIT 1")
+        db.close()
+        log.info("✅ Bootstrap DB completato.")
+        return True
+    except Exception as e:
+        log.exception("❌ Bootstrap DB fallito: %s", e)
+        return False
+
 @app.route("/")
 def home():
     return redirect("/login")
