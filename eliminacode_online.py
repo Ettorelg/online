@@ -1,4 +1,5 @@
 import psycopg2
+import os
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
@@ -14,7 +15,9 @@ socketio = SocketIO(app)
 
 # Configurazione Database Online
 
-DATABASE_URL = "postgresql://postgres:DxeXGaAlXKBAcFtsTGFmnSaFhmuUlivI@trolley.proxy.rlwy.net:34653/railway"
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
