@@ -1,9 +1,9 @@
 import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, session, jsonify
-from escpos.printer import Network
+from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
 
+from escpos.printer import Network
 
 
 
@@ -11,6 +11,12 @@ from escpos.printer import Network
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 socketio = SocketIO(app)
+
+@app.before_first_request
+def init_db():
+    db = Database()
+    db.crea_tabelle()
+    db.close()
 
 # Configurazione Database Online
 
@@ -1168,5 +1174,3 @@ if __name__ == "__main__":
     db.crea_tabelle()
     db.close()
     app.run(host="0.0.0.0", port=5000)
-
-
