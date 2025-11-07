@@ -14,7 +14,7 @@ socketio = SocketIO(app)
 
 # Configurazione Database Online
 
-DATABASE_URL = "postgresql://postgres:UtxXzInfMUgaiaLsAHQODWUkeaKkfIcl@maglev.proxy.rlwy.net:59078/railway"
+DATABASE_URL = "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
