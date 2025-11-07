@@ -7,10 +7,10 @@ from escpos.printer import Network
 
 
 
-
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")
+
 
 # Configurazione Database Online
 
@@ -1167,4 +1167,4 @@ if __name__ == "__main__":
     db = Database()
     db.crea_tabelle()
     db.close()
-    app.run(host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000)

@@ -1,6 +1,6 @@
-flask
-gunicorn
-psycopg2-binary
-flask-socketio
-eventlet
-python-escpos
+Flask==3.1.2
+Flask-SocketIO==5.3.6
+python-socketio==5.11.2
+python-engineio==4.9.1
+psycopg2-binary==2.9.9
+python-escpos==2.2.0
