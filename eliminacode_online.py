@@ -12,12 +12,11 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"
 socketio = SocketIO(app)
 
-@app.before_first_request
-def init_db():
+# Inizializzazione schema DB al import del modulo (idempotente)
+with app.app_context():
     db = Database()
     db.crea_tabelle()
     db.close()
-
 # Configurazione Database Online
 
 DATABASE_URL = "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
@@ -72,10 +71,14 @@ class Database:
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
-                IP_ADDRESS TEXT,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
+                ip_address TEXT,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE,
+                visibile_ritira BOOLEAN NOT NULL DEFAULT FALSE,
+                visibile_qr     BOOLEAN NOT NULL DEFAULT FALSE
+                cronologia     BOOLEAN NOT NULL DEFAULT FALSE
             )
         ''')
+
 
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS file_reparto (
