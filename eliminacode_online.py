@@ -1,17 +1,20 @@
 import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
-
+from flask import Flask, render_template, request, redirect, session, jsonify
 from escpos.printer import Network
 
 
 
 
 
+app = Flask(__name__)
+app.secret_key = "supersecretkey"
+socketio = SocketIO(app)
+
 # Configurazione Database Online
 
-DATABASE_URL = "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
+DATABASE_URL = "postgres://postgres:UtxXzInfMUgaiaLsAHQODWUkeaKkfIcl@hopper.proxy.rlwy.net:31053/railway"
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
@@ -63,14 +66,10 @@ class Database:
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
-                ip_address TEXT,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE,
-                visibile_ritira BOOLEAN NOT NULL DEFAULT FALSE,
-                visibile_qr     BOOLEAN NOT NULL DEFAULT FALSE
-                cronologia     BOOLEAN NOT NULL DEFAULT FALSE
+                IP_ADDRESS TEXT,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
             )
         ''')
-
 
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS file_reparto (
@@ -187,40 +186,6 @@ class Database:
     def close(self):
         self.cursor.close()
         self.conn.close()
-
-app = Flask(__name__)
-app.secret_key = "supersecretkey"
-socketio = SocketIO(app)
-
-import logging, sys
-logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdout)])
-log = logging.getLogger("bootstrap")
-
-def run_db_bootstrap():
-    """Crea tabelle e allinea colonne, con log espliciti e gestione errori."""
-    try:
-        db = Database()
-        # Assicurati di lavorare nello schema 'public'
-        db.execute_query("CREATE SCHEMA IF NOT EXISTS public", commit=True)
-        db.execute_query("SET search_path TO public", commit=False)
-
-        # --- CREA TABELLE ---
-        db.crea_tabelle()  # la tua funzione con CREATE TABLE IF NOT EXISTS + COMMIT
-        # --- MIGRAZIONI SAFE (se reparti manca colonne usate nel codice) ---
-        db.execute_query("""
-            ALTER TABLE IF EXISTS reparti
-              ADD COLUMN IF NOT EXISTS visibile_ritira BOOLEAN NOT NULL DEFAULT FALSE,
-              ADD COLUMN IF NOT EXISTS visibile_qr     BOOLEAN NOT NULL DEFAULT FALSE
-        """, commit=True)
-
-        # Sanity check: prova a leggere una tabella chiave
-        db.execute_query("SELECT 1 FROM utenti LIMIT 1")
-        db.close()
-        log.info("✅ Bootstrap DB completato.")
-        return True
-    except Exception as e:
-        log.exception("❌ Bootstrap DB fallito: %s", e)
-        return False
 
 @app.route("/")
 def home():
