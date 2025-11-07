@@ -1,5 +1,4 @@
 import psycopg2
-import os
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
@@ -15,9 +14,7 @@ socketio = SocketIO(app)
 
 # Configurazione Database Online
 
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
+DATABASE_URL = "postgres://postgres:LrPuARcRABMibMgWZcjQnNlPZXypfwky@hopper.proxy.rlwy.net:31053/railway"
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
@@ -820,7 +817,7 @@ def ritira_ticket():
 
     if request.method == "GET":
         db.close()
-        return render_template("ritira_ticket.html", reparti=reparti, user_id=user_id)
+        return render_template("ritira_ticket.html", reparti=reparti)
 
     # 🔹 Se la richiesta è POST, elabora il ticket
     try:
@@ -1007,18 +1004,13 @@ def visualizza_ticket_qr():
 
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
+    if "user_id" not in session:
+        return redirect("/login")
+
+    user_id = session["user_id"]
     db = Database()
 
-        # Ottieni l'user_id dalla query string
-    if request.method == "GET":
-        user_id = request.args.get("user", type=int)
-    else:
-        user_id = request.form.get("user", type=int)
-
-    if not user_id:
-        return jsonify({"success": False, "message": "Dati mancanti: user_id non trovato"}), 400
-
-    # Recupera solo i reparti con visibile_qr = TRUE per l'utente specificato
+    # Recupera solo i reparti con visibile_qr = TRUE
     reparti = db.execute_query("""
         SELECT id, nome 
         FROM reparti 
@@ -1029,42 +1021,46 @@ def ritira_ticket_qr():
     """, (user_id,))
 
     if request.method == "POST":
-        reparto_id = request.form.get("reparto")
-        user_id = request.form.get("user")
-
-        if not reparto_id or not user_id:
+        reparti_selezionati = request.form.getlist("reparto")  # Ottiene tutti i reparti selezionati
+        if not reparti_selezionati:
             db.close()
-            return jsonify({"success": False, "message": "Dati mancanti"}), 400
+            return jsonify({"success": False, "message": "Nessun reparto selezionato"}), 400
 
-        reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
-        reparto_nome = reparto_nome_result[0][0] if reparto_nome_result else None
+        ticket_dati = []
+        for reparto_id in reparti_selezionati:
+            # Recupera il nome del reparto
+            reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+            reparto_nome = reparto_nome_result[0][0] if reparto_nome_result else None
 
-        result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
-        ticket_number = (result[0][0] + 1) if result else 1
+            if not reparto_nome:
+                continue  # Salta il reparto se non esiste
 
-        db.execute_query(
-            "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
-            (ticket_number, reparto_id), commit=True
-        )
+            # Ottieni il numero massimo attuale del ticket
+            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+            ticket_number = (result[0][0] + 1) if result else 1
+
+            # Aggiorna il numero massimo del ticket
+            db.execute_query(
+                "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
+                (ticket_number, reparto_id), commit=True
+            )
+
+            # Aggiunge il ticket alla lista
+            ticket_dati.append({
+                "reparto_id": reparto_id,
+                "reparto_nome": reparto_nome,
+                "ticket_number": ticket_number
+            })
 
         db.close()
-
-        return jsonify({
-            "reparto_id": reparto_id,
-            "reparto_nome": reparto_nome,
-            "ticket_number": ticket_number
-        })
-
-
-        db.close()
-
+        
         if not ticket_dati:
             return jsonify({"success": False, "message": "Errore nel generare i ticket"}), 500
 
+        # Reindirizza alla pagina che mostra tutti i ticket
         return render_template("visualizza_tutti_ticket.html", tickets=ticket_dati)
 
-    db.close()
-    return render_template("ritira_ticket_qr.html", reparti=reparti, user_id=user_id)
+    return render_template("ritira_ticket_qr.html", reparti=reparti)
 
 from escpos.printer import Network
 import time
