@@ -8,15 +8,7 @@ from escpos.printer import Network
 
 
 
-app = Flask(__name__)
-app.secret_key = "supersecretkey"
-socketio = SocketIO(app)
 
-# Inizializzazione schema DB al import del modulo (idempotente)
-with app.app_context():
-    db = Database()
-    db.crea_tabelle()
-    db.close()
 # Configurazione Database Online
 
 DATABASE_URL = "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
@@ -196,6 +188,15 @@ class Database:
         self.cursor.close()
         self.conn.close()
 
+app = Flask(__name__)
+app.secret_key = "supersecretkey"
+socketio = SocketIO(app)
+
+# Inizializzazione schema DB al import del modulo (idempotente)
+with app.app_context():
+    db = Database()
+    db.crea_tabelle()
+    db.close()
 @app.route("/")
 def home():
     return redirect("/login")
