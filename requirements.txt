@@ -1,7 +1,7 @@
-flask
-gunicorn
-psycopg2-binary
-flask-socketio
-eventlet
-python-escpos
-
+Flask==3.0.3
+Flask-SocketIO==5.3.6
+eventlet==0.36.1
+gunicorn==23.0.0
+psycopg2-binary==2.9.9
+python-escpos==3.1
+Jinja2==3.1.4

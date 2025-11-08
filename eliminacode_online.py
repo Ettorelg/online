@@ -1,20 +1,23 @@
+import os
 import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, session, jsonify
+from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
 from escpos.printer import Network
 
-
-
-
-
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
-socketio = SocketIO(app)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
 
-# Configurazione Database Online
+# Consigliato per SocketIO in produzione su Railway
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
-DATABASE_URL = "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
+# DB: leggi da env (se non presente, fallback al tuo URL)
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
+)
+
+
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
@@ -66,8 +69,10 @@ class Database:
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
-                IP_ADDRESS TEXT,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
+                ip_address TEXT,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE,
+                visibile_ritira BOOLEAN NOT NULL DEFAULT FALSE,
+                visibile_qr BOOLEAN NOT NULL DEFAULT FALSE
             )
         ''')
 
@@ -84,14 +89,6 @@ class Database:
                 numero_attuale INTEGER DEFAULT 0,
                 numero_massimo INTEGER DEFAULT 0,
                 FOREIGN KEY (id_reparto) REFERENCES reparti(id) ON DELETE CASCADE
-            )
-        ''')
-
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS categorie (
-                id SERIAL PRIMARY KEY,
-                nome TEXT NOT NULL,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
             )
         ''')
 
@@ -1167,4 +1164,6 @@ if __name__ == "__main__":
     db = Database()
     db.crea_tabelle()
     db.close()
-   # app.run(host="0.0.0.0", port=$PORT)
+    port = int(os.environ.get("PORT", 8000))
+    # eventlet è consigliato con Flask-SocketIO
+    socketio.run(app, host="0.0.0.0", port=port)
