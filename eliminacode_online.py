@@ -5,31 +5,44 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
 #from escpos.printer.network import Network
 
-import os
 
+
+import os
+from flask import Flask
+from flask_socketio import SocketIO
+
+# --- Configurazione automatica per locale / Railway ---
 def _normalize_db_url(url: str) -> str:
-    if url and url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
+    """
+    Normalizza l'URL del database:
+    - converte postgres:// in postgresql:// per psycopg2
+    - aggiunge sslmode=require se non è localhost
+    """
+    if not url:
+        # Default locale (usa il tuo se serve)
+        return "postgresql://USER:PASS@localhost:5432/eliminacode"
+
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+
+    # Aggiungi SSL se necessario (Railway e altri cloud)
+    if "localhost" not in url and "127.0.0.1" not in url and "sslmode=" not in url:
+        url = f"{url}{'&' if '?' in url else '?'}sslmode=require"
+
     return url
 
-DATABASE_URL = _normalize_db_url(os.environ.get("DATABASE_URL", "postgresql://USER:PASS@localhost:5432/eliminacode"))
+
+# ✅ Legge variabili d'ambiente
+DATABASE_URL = _normalize_db_url(os.environ.get("DATABASE_URL"))
 SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey")
-DISABLE_ESC_POS = os.environ.get("DISABLE_ESC_POS", "1")  # su Railway default disattivo
+DISABLE_ESC_POS = os.environ.get("DISABLE_ESC_POS", "1")  # disattiva stampa in cloud
 
-
-
-
+# ✅ Flask + Socket.IO configurati per Railway
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
-
+app.secret_key = SECRET_KEY
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
-# Configurazione Database Online
-
-
-
-DATABASE_URL = "postgresql://postgres:LrPuARcRABMibMgWZcjQnNlPZXypfwky@hopper.proxy.rlwy.net:31053/railway"
-
+print(f"✅ Connessione database: {DATABASE_URL}")
 
 class Database:
     def __init__(self):
