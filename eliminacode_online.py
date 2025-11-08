@@ -28,7 +28,7 @@ socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
 
 
-DATABASE_URL = "postgresql://eliminacode:MettiUnaPasswordForte@localhost:5432/eliminacode"
+DATABASE_URL = "postgresql://postgres:LrPuARcRABMibMgWZcjQnNlPZXypfwky@hopper.proxy.rlwy.net:31053/railway"
 
 
 class Database:
