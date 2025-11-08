@@ -1,49 +1,20 @@
 import psycopg2
-import os
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
-#from escpos.printer.network import Network
+from escpos.printer import Network
 
 
 
-import os
-from flask import Flask
-from flask_socketio import SocketIO
-
-# --- Configurazione automatica per locale / Railway ---
-def _normalize_db_url(url: str) -> str:
-    """
-    Normalizza l'URL del database:
-    - converte postgres:// in postgresql:// per psycopg2
-    - aggiunge sslmode=require se non è localhost
-    """
-    if not url:
-        # Default locale (usa il tuo se serve)
-        return "postgresql://USER:PASS@localhost:5432/eliminacode"
-
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
-
-    # Aggiungi SSL se necessario (Railway e altri cloud)
-    if "localhost" not in url and "127.0.0.1" not in url and "sslmode=" not in url:
-        url = f"{url}{'&' if '?' in url else '?'}sslmode=require"
-
-    return url
 
 
-# ✅ Legge variabili d'ambiente
-DATABASE_URL = _normalize_db_url(os.environ.get("DATABASE_URL"))
-SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey")
-DISABLE_ESC_POS = os.environ.get("DISABLE_ESC_POS", "1")  # disattiva stampa in cloud
-
-# ✅ Flask + Socket.IO configurati per Railway
 app = Flask(__name__)
-app.secret_key = SECRET_KEY
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+app.secret_key = "supersecretkey"
+socketio = SocketIO(app)
 
-print(f"✅ Connessione database: {DATABASE_URL}")
+# Configurazione Database Online
 
+DATABASE_URL = "postgresql://postgres:LrPuARcRABMibMgWZcjQnNlPZXypfwky@hopper.proxy.rlwy.net:31053/railway"
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
@@ -65,15 +36,12 @@ class Database:
         return {row[0]: row[1] for row in result}
 
     def crea_tabelle(self):
-        # --- TABELLE BASE ---
-
-        # utenti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS utenti (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,  -- Nota: sarebbe meglio hash (es. bcrypt)
-                admin BOOLEAN DEFAULT FALSE,
+                password TEXT NOT NULL,
+                admin BOOLEAN,
                 ragione_sociale TEXT,
                 indirizzo TEXT,
                 citta TEXT,
@@ -84,7 +52,7 @@ class Database:
             )
         ''')
 
-        # licenze
+        # Modificato per includere ON DELETE CASCADE
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS licenze (
                 id SERIAL PRIMARY KEY,
@@ -94,19 +62,15 @@ class Database:
             )
         ''')
 
-        # reparti (nome colonna ip_address coerente + flag visibilità)
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
-                ip_address TEXT,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE,
-                visibile_ritira BOOLEAN DEFAULT FALSE,
-                visibile_qr BOOLEAN DEFAULT FALSE
+                IP_ADDRESS TEXT,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
             )
         ''')
 
-        # file_reparto
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS file_reparto (
                 id SERIAL PRIMARY KEY,
@@ -114,8 +78,6 @@ class Database:
                 id_reparto INTEGER REFERENCES reparti(id) ON DELETE CASCADE
             )
         ''')
-
-        # ticket_reparto
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS ticket_reparto (
                 id_reparto INTEGER PRIMARY KEY,
@@ -125,7 +87,6 @@ class Database:
             )
         ''')
 
-        # categorie (CREALA UNA SOLA VOLTA)
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS categorie (
                 id SERIAL PRIMARY KEY,
@@ -134,18 +95,16 @@ class Database:
             )
         ''')
 
-        # prodotti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS prodotti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
                 prezzo DECIMAL(10,2) NOT NULL,
-                tempo_produzione INTEGER NOT NULL,
+                tempo_produzione INTEGER NOT NULL, -- Tempo in minuti
                 id_categoria INTEGER REFERENCES categorie(id) ON DELETE CASCADE
             )
         ''')
 
-        # dipendenti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS dipendenti (
                 id SERIAL PRIMARY KEY,
@@ -155,7 +114,6 @@ class Database:
             )
         ''')
 
-        # calendario
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS calendario (
                 id SERIAL PRIMARY KEY,
@@ -165,8 +123,7 @@ class Database:
                 data_ora TIMESTAMP NOT NULL
             )
         ''')
-
-        # immagini_utenti
+        
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS immagini_utenti (
                 id SERIAL PRIMARY KEY,
@@ -174,8 +131,15 @@ class Database:
                 immagine_url TEXT NOT NULL
             )
         ''')
+        
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS categorie (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
+            )
+        ''')
 
-        # servizi
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS servizi (
                 id SERIAL PRIMARY KEY,
@@ -185,8 +149,8 @@ class Database:
                 id_categoria INTEGER REFERENCES categorie(id) ON DELETE CASCADE
             )
         ''')
+        
 
-        # personale
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS personale (
                 id SERIAL PRIMARY KEY,
@@ -197,7 +161,6 @@ class Database:
             )
         ''')
 
-        # personale_servizi
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS personale_servizi (
                 id_personale INTEGER REFERENCES personale(id) ON DELETE CASCADE,
@@ -206,7 +169,6 @@ class Database:
             )
         ''')
 
-        # prenotazioni
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS prenotazioni (
                 id SERIAL PRIMARY KEY,
@@ -217,87 +179,13 @@ class Database:
             )
         ''')
 
-        # --- MIGRAZIONI DI SICUREZZA (se la tabella esisteva già senza colonne nuove) ---
-        self.cursor.execute("ALTER TABLE reparti ADD COLUMN IF NOT EXISTS visibile_ritira BOOLEAN DEFAULT FALSE;")
-        self.cursor.execute("ALTER TABLE reparti ADD COLUMN IF NOT EXISTS visibile_qr BOOLEAN DEFAULT FALSE;")
-        
         self.conn.commit()
 
-    from datetime import datetime, timedelta
 
-    def seed_dati_iniziali(self):
-        """
-        Crea un admin di default e (opzionale) dati minimi, solo se non esistono.
-        Password in chiaro SOLO per test: metti hash in produzione.
-        """
-        # Admin di default
-        self.cursor.execute("SELECT id FROM utenti WHERE username = %s", ("admin",))
-        admin = self.cursor.fetchone()
-        if not admin:
-            self.cursor.execute(
-                "INSERT INTO utenti (username, password, admin, email) VALUES (%s, %s, %s, %s) RETURNING id",
-                ("admin", "admin123", True, "admin@example.com")
-            )
-            admin_id = self.cursor.fetchone()[0]
-        else:
-            admin_id = admin[0]
-
-        # Licenze di esempio per l'admin (1 anno da oggi)
-        scadenza = (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d")
-
-        # eliminacode
-        self.cursor.execute("""
-            INSERT INTO licenze (id_utente, tipo, data_scadenza)
-            SELECT %s, %s, %s
-            WHERE NOT EXISTS (
-                SELECT 1 FROM licenze WHERE id_utente = %s AND tipo = %s
-            )
-        """, (admin_id, "eliminacode", scadenza, admin_id, "eliminacode"))
-
-        # prenotazioni
-        self.cursor.execute("""
-            INSERT INTO licenze (id_utente, tipo, data_scadenza)
-            SELECT %s, %s, %s
-            WHERE NOT EXISTS (
-                SELECT 1 FROM licenze WHERE id_utente = %s AND tipo = %s
-            )
-        """, (admin_id, "prenotazioni", scadenza, admin_id, "prenotazioni"))
-
-        # Reparto demo per eliminacode + riga in ticket_reparto
-        self.cursor.execute("""
-            WITH lic AS (
-                SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode' LIMIT 1
-            )
-            INSERT INTO reparti (nome, ip_address, id_licenza, visibile_ritira, visibile_qr)
-            SELECT %s, %s, lic.id, TRUE, TRUE FROM lic
-            WHERE NOT EXISTS (
-                SELECT 1 FROM reparti r JOIN licenze l ON r.id_licenza = l.id
-                WHERE l.id_utente = %s AND l.tipo = 'eliminacode' AND r.nome = %s
-            )
-            RETURNING id
-        """, (admin_id, "Sportello 1", None, admin_id, "Sportello 1"))
-
-        row = None
-        try:
-            row = self.cursor.fetchone()
-        except Exception:
-            pass
-        if row:
-            reparto_id = row[0]
-            self.cursor.execute("""
-                INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
-                VALUES (%s, 0, 0)
-                ON CONFLICT (id_reparto) DO NOTHING
-            """, (reparto_id,))
-
-        self.conn.commit()
 
     def close(self):
         self.cursor.close()
         self.conn.close()
-
-
-
 
 @app.route("/")
 def home():
@@ -1175,6 +1063,7 @@ def ritira_ticket_qr():
     db.close()
     return render_template("ritira_ticket_qr.html", reparti=reparti, user_id=user_id)
 
+from escpos.printer import Network
 import time
 
 def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3):
@@ -1277,8 +1166,5 @@ def download_file(filename):
 if __name__ == "__main__":
     db = Database()
     db.crea_tabelle()
-    # Se l’hai aggiunta:
-    # db.seed_dati_iniziali()
     db.close()
-    port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000)
