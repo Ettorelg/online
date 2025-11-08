@@ -1,20 +1,36 @@
 import psycopg2
+import os
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify
-from escpos.printer import Network
+#from escpos.printer.network import Network
 
+import os
+
+def _normalize_db_url(url: str) -> str:
+    if url and url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+DATABASE_URL = _normalize_db_url(os.environ.get("DATABASE_URL", "postgresql://USER:PASS@localhost:5432/eliminacode"))
+SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey")
+DISABLE_ESC_POS = os.environ.get("DISABLE_ESC_POS", "1")  # su Railway default disattivo
 
 
 
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
-socketio = SocketIO(app)
+
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
 # Configurazione Database Online
 
-DATABASE_URL = "postgres://postgres:LrPuARcRABMibMgWZcjQnNlPZXypfwky@hopper.proxy.rlwy.net:31053/railway"
+
+
+DATABASE_URL = "postgresql://eliminacode:MettiUnaPasswordForte@localhost:5432/eliminacode"
+
+
 class Database:
     def __init__(self):
         self.conn = psycopg2.connect(DATABASE_URL)
@@ -36,12 +52,15 @@ class Database:
         return {row[0]: row[1] for row in result}
 
     def crea_tabelle(self):
+        # --- TABELLE BASE ---
+
+        # utenti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS utenti (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                admin BOOLEAN,
+                password TEXT NOT NULL,  -- Nota: sarebbe meglio hash (es. bcrypt)
+                admin BOOLEAN DEFAULT FALSE,
                 ragione_sociale TEXT,
                 indirizzo TEXT,
                 citta TEXT,
@@ -52,7 +71,7 @@ class Database:
             )
         ''')
 
-        # Modificato per includere ON DELETE CASCADE
+        # licenze
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS licenze (
                 id SERIAL PRIMARY KEY,
@@ -62,15 +81,19 @@ class Database:
             )
         ''')
 
+        # reparti (nome colonna ip_address coerente + flag visibilità)
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS reparti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
-                IP_ADDRESS TEXT,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
+                ip_address TEXT,
+                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE,
+                visibile_ritira BOOLEAN DEFAULT FALSE,
+                visibile_qr BOOLEAN DEFAULT FALSE
             )
         ''')
 
+        # file_reparto
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS file_reparto (
                 id SERIAL PRIMARY KEY,
@@ -78,6 +101,8 @@ class Database:
                 id_reparto INTEGER REFERENCES reparti(id) ON DELETE CASCADE
             )
         ''')
+
+        # ticket_reparto
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS ticket_reparto (
                 id_reparto INTEGER PRIMARY KEY,
@@ -87,6 +112,7 @@ class Database:
             )
         ''')
 
+        # categorie (CREALA UNA SOLA VOLTA)
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS categorie (
                 id SERIAL PRIMARY KEY,
@@ -95,16 +121,18 @@ class Database:
             )
         ''')
 
+        # prodotti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS prodotti (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
                 prezzo DECIMAL(10,2) NOT NULL,
-                tempo_produzione INTEGER NOT NULL, -- Tempo in minuti
+                tempo_produzione INTEGER NOT NULL,
                 id_categoria INTEGER REFERENCES categorie(id) ON DELETE CASCADE
             )
         ''')
 
+        # dipendenti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS dipendenti (
                 id SERIAL PRIMARY KEY,
@@ -114,6 +142,7 @@ class Database:
             )
         ''')
 
+        # calendario
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS calendario (
                 id SERIAL PRIMARY KEY,
@@ -123,7 +152,8 @@ class Database:
                 data_ora TIMESTAMP NOT NULL
             )
         ''')
-        
+
+        # immagini_utenti
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS immagini_utenti (
                 id SERIAL PRIMARY KEY,
@@ -131,15 +161,8 @@ class Database:
                 immagine_url TEXT NOT NULL
             )
         ''')
-        
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS categorie (
-                id SERIAL PRIMARY KEY,
-                nome TEXT NOT NULL,
-                id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE
-            )
-        ''')
 
+        # servizi
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS servizi (
                 id SERIAL PRIMARY KEY,
@@ -149,8 +172,8 @@ class Database:
                 id_categoria INTEGER REFERENCES categorie(id) ON DELETE CASCADE
             )
         ''')
-        
 
+        # personale
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS personale (
                 id SERIAL PRIMARY KEY,
@@ -161,6 +184,7 @@ class Database:
             )
         ''')
 
+        # personale_servizi
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS personale_servizi (
                 id_personale INTEGER REFERENCES personale(id) ON DELETE CASCADE,
@@ -169,6 +193,7 @@ class Database:
             )
         ''')
 
+        # prenotazioni
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS prenotazioni (
                 id SERIAL PRIMARY KEY,
@@ -179,13 +204,87 @@ class Database:
             )
         ''')
 
+        # --- MIGRAZIONI DI SICUREZZA (se la tabella esisteva già senza colonne nuove) ---
+        self.cursor.execute("ALTER TABLE reparti ADD COLUMN IF NOT EXISTS visibile_ritira BOOLEAN DEFAULT FALSE;")
+        self.cursor.execute("ALTER TABLE reparti ADD COLUMN IF NOT EXISTS visibile_qr BOOLEAN DEFAULT FALSE;")
+        
         self.conn.commit()
 
+    from datetime import datetime, timedelta
 
+    def seed_dati_iniziali(self):
+        """
+        Crea un admin di default e (opzionale) dati minimi, solo se non esistono.
+        Password in chiaro SOLO per test: metti hash in produzione.
+        """
+        # Admin di default
+        self.cursor.execute("SELECT id FROM utenti WHERE username = %s", ("admin",))
+        admin = self.cursor.fetchone()
+        if not admin:
+            self.cursor.execute(
+                "INSERT INTO utenti (username, password, admin, email) VALUES (%s, %s, %s, %s) RETURNING id",
+                ("admin", "admin123", True, "admin@example.com")
+            )
+            admin_id = self.cursor.fetchone()[0]
+        else:
+            admin_id = admin[0]
+
+        # Licenze di esempio per l'admin (1 anno da oggi)
+        scadenza = (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d")
+
+        # eliminacode
+        self.cursor.execute("""
+            INSERT INTO licenze (id_utente, tipo, data_scadenza)
+            SELECT %s, %s, %s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM licenze WHERE id_utente = %s AND tipo = %s
+            )
+        """, (admin_id, "eliminacode", scadenza, admin_id, "eliminacode"))
+
+        # prenotazioni
+        self.cursor.execute("""
+            INSERT INTO licenze (id_utente, tipo, data_scadenza)
+            SELECT %s, %s, %s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM licenze WHERE id_utente = %s AND tipo = %s
+            )
+        """, (admin_id, "prenotazioni", scadenza, admin_id, "prenotazioni"))
+
+        # Reparto demo per eliminacode + riga in ticket_reparto
+        self.cursor.execute("""
+            WITH lic AS (
+                SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode' LIMIT 1
+            )
+            INSERT INTO reparti (nome, ip_address, id_licenza, visibile_ritira, visibile_qr)
+            SELECT %s, %s, lic.id, TRUE, TRUE FROM lic
+            WHERE NOT EXISTS (
+                SELECT 1 FROM reparti r JOIN licenze l ON r.id_licenza = l.id
+                WHERE l.id_utente = %s AND l.tipo = 'eliminacode' AND r.nome = %s
+            )
+            RETURNING id
+        """, (admin_id, "Sportello 1", None, admin_id, "Sportello 1"))
+
+        row = None
+        try:
+            row = self.cursor.fetchone()
+        except Exception:
+            pass
+        if row:
+            reparto_id = row[0]
+            self.cursor.execute("""
+                INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo)
+                VALUES (%s, 0, 0)
+                ON CONFLICT (id_reparto) DO NOTHING
+            """, (reparto_id,))
+
+        self.conn.commit()
 
     def close(self):
         self.cursor.close()
         self.conn.close()
+
+
+
 
 @app.route("/")
 def home():
@@ -817,7 +916,7 @@ def ritira_ticket():
 
     if request.method == "GET":
         db.close()
-        return render_template("ritira_ticket.html", reparti=reparti)
+        return render_template("ritira_ticket.html", reparti=reparti, user_id=user_id)
 
     # 🔹 Se la richiesta è POST, elabora il ticket
     try:
@@ -1004,13 +1103,18 @@ def visualizza_ticket_qr():
 
 @app.route("/ritira_ticket_qr", methods=["GET", "POST"])
 def ritira_ticket_qr():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    user_id = session["user_id"]
     db = Database()
 
-    # Recupera solo i reparti con visibile_qr = TRUE
+        # Ottieni l'user_id dalla query string
+    if request.method == "GET":
+        user_id = request.args.get("user", type=int)
+    else:
+        user_id = request.form.get("user", type=int)
+
+    if not user_id:
+        return jsonify({"success": False, "message": "Dati mancanti: user_id non trovato"}), 400
+
+    # Recupera solo i reparti con visibile_qr = TRUE per l'utente specificato
     reparti = db.execute_query("""
         SELECT id, nome 
         FROM reparti 
@@ -1021,48 +1125,43 @@ def ritira_ticket_qr():
     """, (user_id,))
 
     if request.method == "POST":
-        reparti_selezionati = request.form.getlist("reparto")  # Ottiene tutti i reparti selezionati
-        if not reparti_selezionati:
+        reparto_id = request.form.get("reparto")
+        user_id = request.form.get("user")
+
+        if not reparto_id or not user_id:
             db.close()
-            return jsonify({"success": False, "message": "Nessun reparto selezionato"}), 400
+            return jsonify({"success": False, "message": "Dati mancanti"}), 400
 
-        ticket_dati = []
-        for reparto_id in reparti_selezionati:
-            # Recupera il nome del reparto
-            reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
-            reparto_nome = reparto_nome_result[0][0] if reparto_nome_result else None
+        reparto_nome_result = db.execute_query("SELECT nome FROM reparti WHERE id = %s", (reparto_id,))
+        reparto_nome = reparto_nome_result[0][0] if reparto_nome_result else None
 
-            if not reparto_nome:
-                continue  # Salta il reparto se non esiste
+        result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
+        ticket_number = (result[0][0] + 1) if result else 1
 
-            # Ottieni il numero massimo attuale del ticket
-            result = db.execute_query("SELECT numero_massimo FROM ticket_reparto WHERE id_reparto = %s", (reparto_id,))
-            ticket_number = (result[0][0] + 1) if result else 1
-
-            # Aggiorna il numero massimo del ticket
-            db.execute_query(
-                "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
-                (ticket_number, reparto_id), commit=True
-            )
-
-            # Aggiunge il ticket alla lista
-            ticket_dati.append({
-                "reparto_id": reparto_id,
-                "reparto_nome": reparto_nome,
-                "ticket_number": ticket_number
-            })
+        db.execute_query(
+            "UPDATE ticket_reparto SET numero_massimo = %s WHERE id_reparto = %s",
+            (ticket_number, reparto_id), commit=True
+        )
 
         db.close()
-        
+
+        return jsonify({
+            "reparto_id": reparto_id,
+            "reparto_nome": reparto_nome,
+            "ticket_number": ticket_number
+        })
+
+
+        db.close()
+
         if not ticket_dati:
             return jsonify({"success": False, "message": "Errore nel generare i ticket"}), 500
 
-        # Reindirizza alla pagina che mostra tutti i ticket
         return render_template("visualizza_tutti_ticket.html", tickets=ticket_dati)
 
-    return render_template("ritira_ticket_qr.html", reparti=reparti)
+    db.close()
+    return render_template("ritira_ticket_qr.html", reparti=reparti, user_id=user_id)
 
-from escpos.printer import Network
 import time
 
 def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3):
@@ -1165,5 +1264,8 @@ def download_file(filename):
 if __name__ == "__main__":
     db = Database()
     db.crea_tabelle()
+    # Se l’hai aggiunta:
+    # db.seed_dati_iniziali()
     db.close()
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port)
