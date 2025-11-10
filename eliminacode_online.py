@@ -1018,7 +1018,7 @@ def gestione_ticket():
                 # Se la richiesta viene da fetch (JS), restituiamo JSON
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                     return jsonify({"success": True, "new_value": numero_attuale})
-
+    
     db.close()
     return render_template("gestione_ticket.html", reparti=reparti, numeri_ticket=numeri_ticket)
 
@@ -1170,34 +1170,37 @@ def ticket_chiamato_cronologia():
         
 @app.route("/api/cronologia_utente")
 def api_cronologia_utente():
-    if "user_id" not in session:
+    # usa ?user=... se presente, altrimenti la sessione
+    user_id = request.args.get("user", type=int) or session.get("user_id")
+    if not user_id:
         return jsonify([])
 
-    user_id = session["user_id"]
     limit = request.args.get("limit", default=50, type=int)
 
     db = Database()
     rows = db.execute_query("""
-        SELECT c.id, r.nome AS reparto, c.numero, c.azione, c.created_at
+        SELECT r.nome        AS reparto,
+               c.numero      AS numero,
+               c.azione      AS azione,
+               c.created_at  AS created_at
         FROM cronologia_ticket c
-        JOIN reparti r   ON r.id = c.reparto_id
-        JOIN licenze l   ON r.id_licenza = l.id
+        JOIN reparti r  ON r.id = c.reparto_id
+        JOIN licenze l  ON r.id_licenza = l.id
         WHERE l.id_utente = %s
-          AND c.azione = 'chiamata'
+          AND c.azione = 'chiamata'          -- togli questa riga se vuoi tutte le azioni
         ORDER BY c.created_at DESC
         LIMIT %s
     """, (user_id, limit))
     db.close()
 
     data = [{
-        "id": row[0],
-        "reparto": row[1],
-        "numero": row[2],
-        "azione": row[3],
-        "created_at": row[4].isoformat()
-    } for row in rows]
+        "reparto":   r[0],
+        "numero":    r[1],
+        "azione":    r[2],
+        "created_at": r[3].isoformat(),
+        "ora":       r[3].strftime("%H:%M")   # comodo per la UI
+    } for r in rows]
     return jsonify(data)
-
 
 def get_ticket_data(reparto_id):
     conn = psycopg2.connect(DATABASE_URL)
