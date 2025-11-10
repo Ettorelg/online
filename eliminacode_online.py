@@ -73,9 +73,23 @@ class Database:
                 id_licenza INTEGER REFERENCES licenze(id) ON DELETE CASCADE,
                 visibile_ritira BOOLEAN NOT NULL DEFAULT FALSE,
                 visibile_qr BOOLEAN NOT NULL DEFAULT FALSE
+                visualizza_cronologia BOOLEAN NOT NULL DEFAULT FALSE
+                visualizza_qr BOOLEAN NOT NULL DEFAULT FALSE
             )
         ''')
-
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS cronologia_ticket (
+                id SERIAL PRIMARY KEY,
+                reparto_id INTEGER NOT NULL REFERENCES reparti(id) ON DELETE CASCADE,
+                numero INTEGER,
+                azione TEXT NOT NULL CHECK (azione IN ('ritiro','chiamata','avanti','indietro','imposta','reset')),
+                provenienza TEXT,                     -- es: 'qr', 'sportello', 'monitor', ecc.
+                user_id INTEGER,                      -- opzionale: chi ha generato l’evento
+                fila_id INTEGER,                      -- opzionale: se un domani vuoi tracciare la fila
+                note TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                )
+        ''')
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS file_reparto (
                 id SERIAL PRIMARY KEY,
@@ -604,13 +618,26 @@ def gestisci_eliminacode(user_id):
         elif azione == "elimina_fila":
             fila_id = request.form.get("elimina_file")
             db.execute_query("DELETE FROM file_reparto WHERE id = %s", (fila_id,), commit=True)
+        elif azione == "modifica_visualizzazione":
+            reparto_id = request.form.get("reparto_id")
+            # checkbox -> "on" se spuntato, assente se non spuntato
+            vis_cron = request.form.get("visualizza_cronologia") == "on"
+            vis_qr   = request.form.get("visualizza_QRcode") == "on"
+
+            db.execute_query(
+                "UPDATE reparti SET visualizza_cronologia = %s, visualizza_qrcode = %s WHERE id = %s",
+                (vis_cron, vis_qr, reparto_id),
+                commit=True
+            )
 
         return redirect(f"/gestisci_eliminacode/{user_id}")
 
     reparti = db.execute_query(
-        "SELECT id, nome, ip_address, visibile_ritira, visibile_qr FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')", 
+        "SELECT id, nome, ip_address, visibile_ritira, visibile_qr, visualizza_cronologia, visualizza_qrcode "
+        "FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
         (user_id,)
     )
+
     file_reparto = {
         reparto[0]: db.execute_query("SELECT id, nome FROM file_reparto WHERE id_reparto = %s", (reparto[0],)) for reparto in reparti
     }
@@ -811,7 +838,7 @@ def ritira_ticket():
           AND TO_DATE(l.data_scadenza, 'YYYY-MM-DD') >= CURRENT_DATE
           AND r.visibile_ritira = TRUE
     """, (user_id,))
-
+    
     if request.method == "GET":
         db.close()
         return render_template("ritira_ticket.html", reparti=reparti, user_id=user_id)
