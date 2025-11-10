@@ -168,7 +168,7 @@
         <!-- Gestione Fila/Code -->
         <div class="section">
             <h3>Gestisci Code per Reparto</h3>
-			{% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr in reparti %}
+			{% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr, visualizza_cronologia, visualizza_qrcode in reparti %}
 
             <h4>{{ reparto_nome }}</h4>
             <table>
@@ -203,3 +203,4 @@
 
 </body>
 </html>
+
