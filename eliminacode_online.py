@@ -1142,43 +1142,61 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
 def ticket_chiamato_cronologia():
     if "user_id" not in session:
         return redirect("/login")
+
     user_id = session["user_id"]
     db = Database()
+
     numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    numeri_chiamati = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
+    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
+
     reparti = db.execute_query("""
         SELECT DISTINCT r.id, r.nome
         FROM reparti r
         INNER JOIN licenze l ON r.id_licenza = l.id
         WHERE l.id_utente = %s
     """, (user_id,))
+
     immagini = db.execute_query("SELECT immagine_url FROM immagini_utenti WHERE id_utente = %s", (user_id,))
     immagini_list = [row[0] for row in immagini] if immagini else []
+
     db.close()
-    return render_template("ticket_chiamato_cronologia.html",
-                           user_id=user_id, reparti=reparti,
-                           numeri_chiamati=numeri_chiamati, immagini=immagini_list)
-                           
-@app.route("/api/cronologia/<int:reparto_id>")
-def api_cronologia(reparto_id):
+    return render_template(
+        "ticket_chiamato_cronologia.html",
+        user_id=user_id,
+        reparti=reparti,
+        numeri_chiamati=numeri_chiamati_dict,
+        immagini=immagini_list
+    )
+        
+@app.route("/api/cronologia_utente")
+def api_cronologia_utente():
     if "user_id" not in session:
         return jsonify([])
+
+    user_id = session["user_id"]
     limit = request.args.get("limit", default=50, type=int)
+
     db = Database()
-    rows = db.execute_query(
-        "SELECT c.id, c.numero, c.azione, c.provenienza, c.user_id, c.note, c.created_at, r.nome "
-        "FROM ccronologia_ticket c"
-        "JOIN reparti r ON r.id = c.reparto_id"
-        "WHERE c.reparto_id = %s"
-        "ORDER BY c.created_at DESC"
-        "LIMIT %s",c.id, c.numero, c.azione, c.provenienza, c.user_id, c.note, c.created_at, r.nome
-        (reparto_id, limit)
-    )
+    rows = db.execute_query("""
+        SELECT c.id, r.nome AS reparto, c.numero, c.azione, c.created_at
+        FROM cronologia_ticket c
+        JOIN reparti r   ON r.id = c.reparto_id
+        JOIN licenze l   ON r.id_licenza = l.id
+        WHERE l.id_utente = %s
+          AND c.azione = 'chiamata'
+        ORDER BY c.created_at DESC
+        LIMIT %s
+    """, (user_id, limit))
     db.close()
-    return jsonify([
-      {"id":r[0],"numero":r[1],"azione":r[2],"provenienza":r[3],"user_id":r[4],"note":r[5],"created_at":r[6].isoformat(),"reparto_nome": r[7]}
-      for r in rows
-    ])
+
+    data = [{
+        "id": row[0],
+        "reparto": row[1],
+        "numero": row[2],
+        "azione": row[3],
+        "created_at": row[4].isoformat()
+    } for row in rows]
+    return jsonify(data)
 
 
 def get_ticket_data(reparto_id):
