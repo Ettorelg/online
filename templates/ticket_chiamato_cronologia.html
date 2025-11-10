@@ -155,7 +155,7 @@
         }
 		.history-wrapper {
 			width: 100%;
-			max-height: 50%;
+			max-height: 30%;
 			overflow-y: hidden;
 			padding: 10px;
 			display: flex;
@@ -177,47 +177,50 @@
 
 		.history-item {
 			background: rgba(255, 255, 255, 0.1);
-			padding: 14px;
-			border-radius: 10px;
+			padding: 4px 8px; /* ridotto da 10px */
+			border-radius: 6px; /* più stretto */
 			display: flex;
-			flex-direction: row; /* 👈 Prima era column */
-			justify-content: space-between; /* 👈 Spaziati in orizzontale */
+			flex-direction: row;
+			justify-content: space-between;
 			align-items: center;
-			gap: 10px;
+			gap: 4px;
 			font-weight: bold;
-			transition: transform 0.2s ease-in-out, background 0.3s ease-in-out;
+			margin-bottom: 3px; /* aggiunto per ridurre spazio verticale */
+			transition: transform 0.3s ease-in-out, background 0.2s ease-in-out;
 		}
 
 		.history-time {
 			font-size: 14px;
 			opacity: 0.7;
-			min-width: 55px; /* blocco orario fisso */
+			min-width: 50px;
 			text-align: right;
 		}
 
 		.history-text {
-			font-size: 18px;
+			font-size: 20px;
 			color: #ffcc00;
 			text-transform: uppercase;
-			flex: 1; /* occupa lo spazio centrale */
+			flex: 1;
 			text-align: left;
+			white-space: nowrap;       /* evita che vada a capo */
+			overflow: hidden;
+			text-overflow: ellipsis;
 		}
 
 		.history-number {
-			font-size: 22px;
+			font-size: 24px;
 			background: #ffcc00;
 			color: black;
-			padding: 6px 12px;
-			border-radius: 8px;
-			min-width: 50px;
+			padding: 4px 10px; /* ridotto */
+			border-radius: 6px;
+			min-width: 42px;
 			text-align: center;
 		}
 
 		.history-item:hover {
-			transform: scale(1.03);
-			background: rgba(255, 255, 255, 0.18);
+			transform: scale(1.02);
+			background: rgba(255, 255, 255, 0.16);
 		}
-
 
 		/* Animazione ingresso elemento cronologia */
 		.fade-in {
