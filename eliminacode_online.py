@@ -1187,7 +1187,6 @@ def api_cronologia_utente():
         JOIN reparti r  ON r.id = c.reparto_id
         JOIN licenze l  ON r.id_licenza = l.id
         WHERE l.id_utente = %s
-          AND c.azione = 'chiamata'          -- togli questa riga se vuoi tutte le azioni
         ORDER BY c.created_at DESC
         LIMIT %s
     """, (user_id, limit))
