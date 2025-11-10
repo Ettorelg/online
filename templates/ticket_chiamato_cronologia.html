@@ -263,10 +263,12 @@
 		loadHistory(); // <— aggiungi questa riga alla fine
     });
 
+	// 👇 SOSTITUISCI la funzione
 	async function loadHistory(limit = 50) {
 	  try {
-		const userId = "{{ user_id }}";
-		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}`);
+		const userId = "{{ user_id }}";            // passato dal template
+		const cacheBust = Date.now();
+		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
 
 		const ul = document.getElementById("historyList");
@@ -286,6 +288,19 @@
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
+
+	// 👇 AGGIUNGI alla fine del tuo handler Socket
+	socket.on("update_tickets", function(numeri) {
+	  // ... tuo codice esistente che aggiorna i numeri ...
+	  loadHistory(); // <-- aggiungi questa riga
+	});
+
+	// Avvio + (facoltativo) polling
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000); // opzionale
+	});
+
 
 	// aggiorna la cronologia quando arrivano nuove chiamate
 	socket.on("update_tickets", function() { loadHistory(); });
