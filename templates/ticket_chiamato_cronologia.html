@@ -180,10 +180,10 @@
 			padding: 14px;
 			border-radius: 10px;
 			display: flex;
-			flex-direction: column;
-			gap: 4px;
-			border-left: none; /* rimuove la barra laterale */
-			text-align: left;
+			flex-direction: row; /* 👈 Prima era column */
+			justify-content: space-between; /* 👈 Spaziati in orizzontale */
+			align-items: center;
+			gap: 10px;
 			font-weight: bold;
 			transition: transform 0.2s ease-in-out, background 0.3s ease-in-out;
 		}
@@ -191,26 +191,33 @@
 		.history-time {
 			font-size: 14px;
 			opacity: 0.7;
+			min-width: 55px; /* blocco orario fisso */
+			text-align: right;
 		}
 
 		.history-text {
-			font-size: 20px;
+			font-size: 18px;
 			color: #ffcc00;
 			text-transform: uppercase;
+			flex: 1; /* occupa lo spazio centrale */
+			text-align: left;
 		}
-		.history-item:hover {
-			transform: scale(1.03);
-			background: rgba(255, 255, 255, 0.18);
-		}
+
 		.history-number {
-			font-size: 28px;
+			font-size: 22px;
 			background: #ffcc00;
 			color: black;
 			padding: 6px 12px;
 			border-radius: 8px;
-			display: inline-block;
-			width: fit-content;
+			min-width: 50px;
+			text-align: center;
 		}
+
+		.history-item:hover {
+			transform: scale(1.03);
+			background: rgba(255, 255, 255, 0.18);
+		}
+
 
 		/* Animazione ingresso elemento cronologia */
 		.fade-in {
@@ -321,11 +328,12 @@
 		  const li = document.createElement("li");
 		  li.className = "history-item";
 		  li.innerHTML = `
-			  <span class="history-time">${item.ora ?? ""}</span>
-			  <span class="history-text">${item.reparto}</span>
 			  <span class="history-number">${item.numero}</span>
+			  <span class="history-text">${item.reparto}</span>
+			  <span class="history-time">${item.ora ?? ""}</span>
 			`;
 
+			
 		  ul.appendChild(li);
 		});
 	  } catch (e) {
