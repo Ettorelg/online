@@ -262,23 +262,39 @@
         }
     });
 
-	async function loadHistory() {
-		let userId = "{{ user_id }}";
-		let res = await fetch("/api/cronologia_utente?user=" + userId);
-		let data = await res.json();
+	async function loadHistory(limit = 50) {
+	  try {
+		const userId = "{{ user_id }}";
+		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}`);
+		const data = await res.json();
 
-		let ul = document.getElementById("historyList");
+		const ul = document.getElementById("historyList");
+		if (!ul) return;
+
 		ul.innerHTML = "";
-		data.slice(0,30).forEach(item => {
-			let li = document.createElement("li");
-			li.className = "history-item";
-			li.innerHTML = `
-				<span class="history-time">${item.ora}</span>
-				<span class="history-text">${item.reparto} ➜ Ticket ${item.numero}</span>
-			`;
-			ul.appendChild(li);
+		data.forEach(item => {
+		  const li = document.createElement("li");
+		  li.className = "history-item";
+		  li.innerHTML = `
+			<span class="history-time">${item.ora ?? ""}</span>
+			<span class="history-text">${item.reparto} ➜ Ticket ${item.numero}</span>
+		  `;
+		  ul.appendChild(li);
 		});
+	  } catch (e) {
+		console.error("Errore fetch cronologia:", e);
+	  }
 	}
+
+	// aggiorna la cronologia quando arrivano nuove chiamate
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	// avvio + polling leggero
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000);
+	});
+
 
 	// Aggiorna cronologia quando cambia un ticket
 	socket.on("update_tickets", function() { loadHistory(); });
