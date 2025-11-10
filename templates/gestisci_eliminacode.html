@@ -112,7 +112,7 @@
                     <th>Azioni</th>
 					<th>Visualizzazione</th>
                 </tr>
-				{% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr in reparti %}
+				{% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr, visualizza_cronologia, visualizza_qrcode in reparti %}
 
                 <tr>
     <td>{{ reparto_nome }}</td>
@@ -136,14 +136,22 @@
         </form>
     </td>
 	<td>
-              <form method="POST">
-                <input type="hidden" name="reparto_id" value="{{ reparto_id }}" />
-                <label class="switch">
-                  <input type="checkbox" name="visualizza_cronologia" data-autosubmit data-action="modifica_cronologia" /> Cronologia
-                </label>
-                <input type="hidden" name="azione" value="modifica_cronologia" />
-              </form>
-            </td>
+	  <form method="POST">
+		<input type="hidden" name="reparto_id" value="{{ reparto_id }}" />
+		<label class="switch">
+		  <input type="checkbox" name="visualizza_cronologia"
+				 {% if visualizza_cronologia %}checked{% endif %}
+				 onchange="this.form.submit()"> Cronologia
+		</label>
+		<label class="switch">
+		  <input type="checkbox" name="visualizza_QRcode"
+				 {% if visualizza_qrcode %}checked{% endif %}
+				 onchange="this.form.submit()"> Visualizza QRcode
+		</label>
+		<input type="hidden" name="azione" value="modifica_visualizzazione" />
+	  </form>
+	</td>
+
     <td>
         <form method="POST">
             <input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
