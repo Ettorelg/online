@@ -1138,6 +1138,44 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
     print(f"❌ Errore definitivo: impossibile connettersi alla stampante {ip_stampante} dopo {tentativi} tentativi.")
     return False  # Se dopo tutti i tentativi non riesce, restituisce errore
 
+@app.route("/ticket_chiamato_cronologia")
+def ticket_chiamato_cronologia():
+    if "user_id" not in session:
+        return redirect("/login")
+    user_id = session["user_id"]
+    db = Database()
+    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
+    numeri_chiamati = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
+    reparti = db.execute_query("""
+        SELECT DISTINCT r.id, r.nome
+        FROM reparti r
+        INNER JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s
+    """, (user_id,))
+    immagini = db.execute_query("SELECT immagine_url FROM immagini_utenti WHERE id_utente = %s", (user_id,))
+    immagini_list = [row[0] for row in immagini] if immagini else []
+    db.close()
+    return render_template("ticket_chiamato_cronologia.html",
+                           user_id=user_id, reparti=reparti,
+                           numeri_chiamati=numeri_chiamati, immagini=immagini_list)
+                           
+@app.route("/api/cronologia/<int:reparto_id>")
+def api_cronologia(reparto_id):
+    if "user_id" not in session:
+        return jsonify([])
+    limit = request.args.get("limit", default=50, type=int)
+    db = Database()
+    rows = db.execute_query(
+        "SELECT id, numero, azione, provenienza, user_id, note, created_at "
+        "FROM cronologia_ticket WHERE reparto_id = %s "
+        "ORDER BY created_at DESC LIMIT %s",
+        (reparto_id, limit)
+    )
+    db.close()
+    return jsonify([
+      {"id":r[0],"numero":r[1],"azione":r[2],"provenienza":r[3],"user_id":r[4],"note":r[5],"created_at":r[6].isoformat()}
+      for r in rows
+    ])
 
 
 def get_ticket_data(reparto_id):
