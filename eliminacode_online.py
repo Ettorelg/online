@@ -1014,6 +1014,14 @@ def gestione_ticket():
 
                 # Aggiorna i ticket in tempo reale via WebSocket
                 socketio.emit("update_tickets", numeri_ticket)
+                # 👇 AGGIUNGI dopo l'UPDATE del numero_attuale
+                azione_log = 'chiamata' if azione in ('avanti', 'imposta') else azione
+                db.execute_query(
+                    "INSERT INTO cronologia_ticket (reparto_id, numero, azione, provenienza, user_id, note) "
+                    "VALUES (%s, %s, %s, 'monitor', %s, %s)",
+                    (reparto_id, numero_attuale, azione_log, session.get('user_id'), 'Aggiornamento da gestione_ticket'),
+                    commit=True
+                )
 
                 # Se la richiesta viene da fetch (JS), restituiamo JSON
                 if request.headers.get("X-Requested-With") == "XMLHttpRequest":
