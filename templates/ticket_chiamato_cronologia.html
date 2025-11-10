@@ -169,154 +169,181 @@
 
   </style>
 
-  <script>
-    // ⚙️ WebSocket
-    var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
-      transports: ["websocket"], secure: true, reconnection: true
-    });
+  <script>	
+		  // Mappe reparto per gestire chiavi sia per ID che per nome
+		const nameToId = {
+			{% for reparto in reparti %}
+			  "{{ reparto[1] | e }}": {{ reparto[0] }}{% if not loop.last %},{% endif %}
+			{% endfor %}
+		  };
+		  const idToName = {
+			{% for reparto in reparti %}
+			  {{ reparto[0] }}: "{{ reparto[1] | e }}"{% if not loop.last %},{% endif %}
+			{% endfor %}
+		  };
 
-    // 🔊 Audio (uguale alla tua pagina attuale)
-    var selectedVoice = null;
-    var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
-
-    function getAudioPreference(){ return localStorage.getItem("audioMode") || "synth"; }
-    function saveAudioPreference(){
-      let mode = document.getElementById("audioMode").value;
-      localStorage.setItem("audioMode", mode);
-    }
-    function loadVoices(){
-      var voices = window.speechSynthesis.getVoices();
-      selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-                      voices.find(v => v.name.includes("Google italiano femminile")) ||
-                      voices.find(v => v.name.includes("Alice")) ||
-                      voices.find(v => v.lang === "it-IT");
-    }
-    function announceNumber(number, reparto){
-      let mode = getAudioPreference();
-      if(mode === "synth" && 'speechSynthesis' in window){
-        var msg = new SpeechSynthesisUtterance("Numero " + number);
-        msg.voice = selectedVoice; msg.rate = 0.7; msg.pitch = 1.0;
-        window.speechSynthesis.speak(msg);
-      }else{
-        audio.play().catch(()=>{});
-      }
-    }
-    function highlightNumber(el){
-      el.classList.add("highlight");
-      setTimeout(()=> el.classList.remove("highlight"), 5000);
-    }
-
-    // 🔁 Aggiorna numeri in tempo reale (come tua pagina)
-    socket.on("update_tickets", function(numeri){
-      for(var reparto in numeri){
-        var el = document.getElementById("ticket-" + reparto);
-        if(el){
-          var oldNumber = el.innerText;
-          el.innerText = numeri[reparto];
-          if(oldNumber != numeri[reparto]){
-            highlightNumber(el);
-            announceNumber(numeri[reparto], el.dataset.reparto);
-          }
-        }
-      }
-      // ogni update → ricarica cronologia del reparto specifico se presente
-      for(var reparto in numeri){
-        refreshHistory(parseInt(reparto));
-      }
-    });
-
-    // 📝 CRONOLOGIA
-    let currentRepartoId = null;
-
-    function setActiveTab(repartoId){
-      currentRepartoId = repartoId;
-      document.querySelectorAll('.reparto-tab').forEach(t => t.classList.remove('active'));
-      const btn = document.getElementById("tab-" + repartoId);
-      if(btn){ btn.classList.add('active'); }
-      refreshHistory(repartoId);
-    }
-
-    async function refreshHistory(repartoId){
-      if(!repartoId) return;
-      try{
-        const res = await fetch(`/api/cronologia/${repartoId}?limit=50`);
-        if(!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json(); // [{id,numero,azione,provenienza,user_id,note,created_at}...]
-        renderHistory(data);
-      }catch(e){
-        console.error("Errore caricamento cronologia:", e);
-      }
-    }
-
-    function fmtDate(ts){
-      // ts già in ISO; mostra HH:MM:SS o data breve
-      try{
-        const d = new Date(ts);
-        return d.toLocaleString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-      }catch{ return ts; }
-    }
-
-	function renderHistory(rows) {
-		const box = document.getElementById("history-list");
-		if (!box) return;
-
-		box.innerHTML = "";
-
-		if (!rows || !rows.length) {
-		  box.innerHTML = `<div class="history-empty">Nessun evento</div>`;
-		  return;
-		}
-
-		// Ordine: più vecchi → più recenti (scorri verso il basso)
-		rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
-		rows.forEach(r => {
-		  const div = document.createElement("div");
-		  div.className = "history-ticket";
-		  const repartoLabel = r.reparto_nome || "";  // se API non lo fornisce
-		  div.innerHTML = `
-			<span class="time">${fmtDate(r.created_at)}</span>
-			<span class="reparto">${repartoLabel}</span>
-			<span class="number">${r.numero ?? "-"}</span>
-		  `;
-		  box.appendChild(div);
+		// ⚙️ WebSocket
+		var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
+		  transports: ["websocket"], secure: true, reconnection: true
 		});
 
-		// Auto scroll to bottom
-		box.scrollTop = box.scrollHeight;
-	  }
+		// 🔊 Audio (uguale alla tua pagina attuale)
+		var selectedVoice = null;
+		var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
 
-        `;
-        box.appendChild(item);
-      });
-    }
+		function getAudioPreference(){ return localStorage.getItem("audioMode") || "synth"; }
+		function saveAudioPreference(){
+		  let mode = document.getElementById("audioMode").value;
+		  localStorage.setItem("audioMode", mode);
+		}
+		function loadVoices(){
+		  var voices = window.speechSynthesis.getVoices();
+		  selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+						  voices.find(v => v.name.includes("Google italiano femminile")) ||
+						  voices.find(v => v.name.includes("Alice")) ||
+						  voices.find(v => v.lang === "it-IT");
+		}
+		function announceNumber(number, reparto){
+		  let mode = getAudioPreference();
+		  if(mode === "synth" && 'speechSynthesis' in window){
+			var msg = new SpeechSynthesisUtterance("Numero " + number);
+			msg.voice = selectedVoice; msg.rate = 0.7; msg.pitch = 1.0;
+			window.speechSynthesis.speak(msg);
+		  }else{
+			audio.play().catch(()=>{});
+		  }
+		}
+		function highlightNumber(el){
+		  el.classList.add("highlight");
+		  setTimeout(()=> el.classList.remove("highlight"), 5000);
+		}
 
-    // Poll di sicurezza ogni 8s (oltre agli update websocket)
-    setInterval(()=>{ if(currentRepartoId){ refreshHistory(currentRepartoId); }}, 8000);
+		// 🔁 Aggiorna numeri in tempo reale (come tua pagina)
 
-    // Carosello immagini (come tua pagina)
-    document.addEventListener("DOMContentLoaded", function(){
-      // attiva la voce
-      window.speechSynthesis.onvoiceschanged = loadVoices; setTimeout(loadVoices, 500);
+		socket.on("update_tickets", function(numeri){
+			for (var key in numeri) {
+			  let repartoId = null;
 
-      // set tab iniziale = primo reparto
-      const firstTab = document.querySelector('.reparto-tab');
-      if(firstTab){
-        const rid = parseInt(firstTab.dataset.id, 10);
-        setActiveTab(rid);
-      }
+			  if (/^\d+$/.test(String(key))) {
+				// chiave è un ID numerico
+				repartoId = parseInt(key, 10);
+			  } else if (nameToId[key] !== undefined) {
+				// chiave è un nome reparto
+				repartoId = nameToId[key];
+			  }
 
-      // carosello
-      let idx=0; const images = document.querySelector(".carousel-images");
-      if(images && images.children.length>0){
-        setInterval(()=>{ idx=(idx+1)%images.children.length; images.style.transform = `translateX(-${idx*100}%)`; }, 3000);
-      }
+			  if (repartoId !== null) {
+				var el = document.getElementById("ticket-" + repartoId);
+				if (el) {
+				  var oldNumber = el.innerText;
+				  const nuovo = numeri[key];
+				  el.innerText = nuovo;
+				  if (oldNumber != nuovo) {
+					highlightNumber(el);
+					const repName = el.dataset.reparto || idToName[repartoId] || "";
+					announceNumber(nuovo, repName);
+				  }
+				}
 
-      // ripristina preferenza audio UI se presente
-      const sel = document.getElementById("audioMode");
-      if(sel){ sel.value = getAudioPreference(); }
-    });
-  </script>
+				// ricarica cronologia solo per il reparto aggiornato
+				refreshHistory(repartoId);
+			  }
+			}
+		  });
+
+
+		// 📝 CRONOLOGIA
+		let currentRepartoId = null;
+
+		function setActiveTab(repartoId){
+		  currentRepartoId = repartoId;
+		  document.querySelectorAll('.reparto-tab').forEach(t => t.classList.remove('active'));
+		  const btn = document.getElementById("tab-" + repartoId);
+		  if(btn){ btn.classList.add('active'); }
+		  refreshHistory(repartoId);
+		}
+
+		async function refreshHistory(repartoId){
+		  if(!repartoId) return;
+		  try{
+			const res = await fetch(`/api/cronologia/${repartoId}?limit=50`);
+			if(!res.ok) throw new Error("HTTP " + res.status);
+			const data = await res.json(); // [{id,numero,azione,provenienza,user_id,note,created_at}...]
+			renderHistory(data);
+		  }catch(e){
+			console.error("Errore caricamento cronologia:", e);
+		  }
+		}
+
+		function fmtDate(ts){
+		  // ts già in ISO; mostra HH:MM:SS o data breve
+		  try{
+			const d = new Date(ts);
+			return d.toLocaleString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+		  }catch{ return ts; }
+		}
+
+			function renderHistory(rows) {
+				const box = document.getElementById("history-list");
+				if (!box) return;
+
+				box.innerHTML = "";
+
+				if (!rows || !rows.length) {
+				  box.innerHTML = `<div class="history-empty">Nessun evento</div>`;
+				  return;
+				}
+
+				// Ordine: più vecchi → più recenti (scorri verso il basso)
+				rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+				rows.forEach(r => {
+				  const div = document.createElement("div");
+				  div.className = "history-ticket";
+				  const repartoLabel = r.reparto_nome || "";  // se API non lo fornisce
+				  div.innerHTML = `
+					<span class="time">${fmtDate(r.created_at)}</span>
+					<span class="reparto">${repartoLabel}</span>
+					<span class="number">${r.numero ?? "-"}</span>
+				  `;
+				  box.appendChild(div);
+				});
+
+				// Auto scroll to bottom
+				box.scrollTop = box.scrollHeight;
+				}
+
+				`;
+				box.appendChild(item);
+			  });
+			}
+
+		// Poll di sicurezza ogni 8s (oltre agli update websocket)
+		setInterval(()=>{ if(currentRepartoId){ refreshHistory(currentRepartoId); }}, 8000);
+
+		// Carosello immagini (come tua pagina)
+		document.addEventListener("DOMContentLoaded", function(){
+		  // attiva la voce
+		  window.speechSynthesis.onvoiceschanged = loadVoices; setTimeout(loadVoices, 500);
+
+		  // set tab iniziale = primo reparto
+		  const firstTab = document.querySelector('.reparto-tab');
+		  if(firstTab){
+			const rid = parseInt(firstTab.dataset.id, 10);
+			setActiveTab(rid);
+		  }
+
+		  // carosello
+		  let idx=0; const images = document.querySelector(".carousel-images");
+		  if(images && images.children.length>0){
+			setInterval(()=>{ idx=(idx+1)%images.children.length; images.style.transform = `translateX(-${idx*100}%)`; }, 3000);
+		  }
+
+		  // ripristina preferenza audio UI se presente
+		  const sel = document.getElementById("audioMode");
+		  if(sel){ sel.value = getAudioPreference(); }
+		});
+	</script>
 </head>
 <body>
 
