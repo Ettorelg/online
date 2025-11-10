@@ -156,7 +156,7 @@
 		.history-wrapper {
 			width: 100%;
 			max-height: 50%;
-			overflow-y: auto;
+			overflow-y: hidden;
 			padding: 10px;
 			display: flex;
 			flex-direction: column;
@@ -191,6 +191,27 @@
 			font-size: 16px;
 			font-weight: bold;
 		}
+		/* Animazione ingresso elemento cronologia */
+		.fade-in {
+		  animation: fadeInUp 350ms ease-out;
+		}
+
+		@keyframes fadeInUp {
+		  from {
+			opacity: 0;
+			transform: translateY(12px);
+		  }
+		  to {
+			opacity: 1;
+			transform: translateY(0);
+		  }
+		}
+
+		/* (opzionale) leggero highlight appena inserito */
+		.just-added {
+		  box-shadow: 0 0 0 2px #ffcc00 inset;
+		}
+
 
     </style>
 <script>
@@ -288,11 +309,31 @@
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
-
+	
 	// 👇 AGGIUNGI alla fine del tuo handler Socket
 	socket.on("update_tickets", function(numeri) {
 	  // ... tuo codice esistente che aggiorna i numeri ...
-	  loadHistory(); // <-- aggiungi questa riga
+		loadHistory(); // <-- aggiungi questa riga
+		function appendHistoryItem(listEl, item) {
+		  const li = document.createElement("li");
+		  li.className = "history-item fade-in just-added";
+		  li.innerHTML = `
+			<span class="history-time">${item.ora ?? ""}</span>
+			<span class="history-text">${item.reparto} ➜ Ticket ${item.numero}</span>
+		  `;
+
+		  // metti in cima
+		  listEl.prepend(li);
+
+		  // rimuovi il bordo evidenziato dopo un attimo
+		  setTimeout(() => li.classList.remove("just-added"), 600);
+
+		  // mantieni solo 10 elementi
+		  while (listEl.children.length > 10) {
+			listEl.removeChild(listEl.lastChild);
+		  }
+		}
+
 	});
 
 	// Avvio + (facoltativo) polling
