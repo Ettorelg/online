@@ -321,31 +321,6 @@
     document.addEventListener("DOMContentLoaded", function () {
         let qrContainer = document.getElementById("qrcode");
 
-        function generateQRCode() {
-            qrContainer.innerHTML = ""; // Svuota il contenitore
-            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
-
-            // 🔹 Ottieni l'ID dell'utente dal backend
-            let userId = "{{ user_id }}";
-
-            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
-            if (!userId || userId.trim() === "") {
-                console.error("❌ Errore: user_id non è definito.");
-                return;
-            }
-
-            // 🔹 Genera il QR Code con l'ID dell'utente
-            new QRCode(qrContainer, {
-                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-                width: size,
-                height: size
-            });
-
-            console.log("✅ QR Code generato con successo per user_id:", userId);
-        }
-
-        // 🔹 Genera il QR Code dopo il caricamento della pagina
-        setTimeout(generateQRCode, 100);
 
         // Scorrimento immagini
         let currentIndex = 0;
