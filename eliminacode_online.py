@@ -1166,9 +1166,12 @@ def api_cronologia(reparto_id):
     limit = request.args.get("limit", default=50, type=int)
     db = Database()
     rows = db.execute_query(
-        "SELECT id, numero, azione, provenienza, user_id, note, created_at "
-        "FROM cronologia_ticket WHERE reparto_id = %s "
-        "ORDER BY created_at DESC LIMIT %s",
+        "SELECT c.id, c.numero, c.azione, c.provenienza, c.user_id, c.note, c.created_at, r.nome "
+        "FROM ccronologia_ticket c"
+        "JOIN reparti r ON r.id = c.reparto_id"
+        "WHERE c.reparto_id = %s"
+        "ORDER BY c.created_at DESC"
+        "LIMIT %s",c.id, c.numero, c.azione, c.provenienza, c.user_id, c.note, c.created_at, r.nome
         (reparto_id, limit)
     )
     db.close()
