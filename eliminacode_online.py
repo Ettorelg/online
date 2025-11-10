@@ -1176,7 +1176,7 @@ def api_cronologia(reparto_id):
     )
     db.close()
     return jsonify([
-      {"id":r[0],"numero":r[1],"azione":r[2],"provenienza":r[3],"user_id":r[4],"note":r[5],"created_at":r[6].isoformat()}
+      {"id":r[0],"numero":r[1],"azione":r[2],"provenienza":r[3],"user_id":r[4],"note":r[5],"created_at":r[6].isoformat(),"reparto_nome": r[7]}
       for r in rows
     ])
 
