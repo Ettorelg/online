@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Ticket Chiamato – Cronologia</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <style>
+    :root{
+      --bg:#000; --panel:#222; --brand:#ffcc00; --muted:#999; --card:rgba(255,255,255,0.1);
+    }
+    body{
+      font-family: Arial, sans-serif;
+      margin:0; padding:0; background-color:var(--bg); color:#fff;
+      display:flex; height:100vh;
+    }
+
+    /* Sinistra: CRONOLOGIA (40%) */
+    .left-section{
+      display:flex; flex-direction:column; width:40%; padding:10px;
+      background-color:var(--panel); border-right:2px solid var(--brand);
+    }
+
+    .history-header{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; margin-bottom:10px;
+    }
+
+    .history-title{
+      font-size:clamp(18px,2.2vw,26px); font-weight:bold; color:var(--brand);
+      text-transform:uppercase;
+    }
+
+    .reparto-tabs{
+      display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 10px 0;
+    }
+    .reparto-tab{
+      background:var(--card); border:1px solid #444; border-radius:999px;
+      padding:6px 12px; cursor:pointer; font-size:14px;
+    }
+    .reparto-tab.active{
+      background:var(--brand); color:#000; border-color:var(--brand);
+    }
+
+    .history-list{
+      flex:1; overflow:auto; border:1px solid #333; border-radius:8px; padding:10px;
+      background:rgba(0,0,0,0.35);
+    }
+    .history-empty{
+      color:var(--muted); text-align:center; padding:16px;
+    }
+
+    .history-item{
+      display:grid; grid-template-columns: 86px 1fr; gap:10px;
+      padding:10px; margin-bottom:10px; border-radius:8px; background:var(--card);
+      border-left:4px solid #555;
+    }
+    .history-item[data-azione="ritiro"]{ border-left-color:#2dd36f; }
+    .history-item[data-azione="chiamata"]{ border-left-color:#ff3b30; }
+    .history-item[data-azione="avanti"]{ border-left-color:#ffcc00; }
+    .history-item[data-azione="indietro"]{ border-left-color:#5ac8fa; }
+    .history-item[data-azione="imposta"]{ border-left-color:#a390ff; }
+    .history-item[data-azione="reset"]{ border-left-color:#888; }
+
+    .history-time{
+      font-size:12px; color:#ccc; text-align:right;
+    }
+    .history-main{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+    .badge{
+      display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px;
+      background:#333; border:1px solid #555;
+    }
+    .badge-azione{ background:#111; border-color:#444; text-transform:uppercase; }
+    .badge-num{ background:var(--brand); color:#000; font-weight:bold; }
+    .badge-provenienza{ background:#2a2a2a; border-color:#555; color:#ddd; }
+    .note{ font-size:13px; color:#ddd; }
+
+    /* Carosello immagini (in basso) */
+    .carousel-container{
+      width:100%; height:34%; margin-top:10px; overflow:hidden; position:relative;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:10px; border:1px solid #333; background:#111;
+    }
+    .carousel-images{
+      display:flex; transition: transform 1s ease-in-out; width:100%; height:100%;
+    }
+    .carousel-images img{
+      width:100%; height:100%; object-fit:contain;
+    }
+
+    /* Destra: NUMERI CHIAMATI (60%) */
+    .right-section{
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      width:60%; padding:20px; background-color:var(--bg);
+    }
+    .reparti-container{
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap:20px; width:100%; max-width:900px; padding:20px;
+    }
+    .reparto-container{ background:var(--card); padding:20px; border-radius:10px; text-align:center; }
+    .reparto-nome{ font-size:clamp(18px,3vw,30px); font-weight:bold; color:var(--brand); text-transform:uppercase; }
+    .ticket-number{
+      font-size:clamp(50px,8vw,120px); font-weight:bold; padding:20px;
+      background:var(--brand); color:#000; border-radius:10px; display:inline-block;
+      min-width:150px; text-align:center; transition: transform .3s, background-color .3s;
+    }
+    .highlight{ animation:pulse 1s infinite alternate; }
+    @keyframes pulse{
+      from{ transform:scale(1); background-color:var(--brand); }
+      to{ transform:scale(1.2); background-color:#ff3300; }
+    }
+
+    /* Audio mode mini panel (opzionale) */
+    .audio-panel{
+      position:absolute; right:20px; bottom:20px; text-align:center;
+    }
+  </style>
+
+  <script>
+    // ⚙️ WebSocket
+    var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
+      transports: ["websocket"], secure: true, reconnection: true
+    });
+
+    // 🔊 Audio (uguale alla tua pagina attuale)
+    var selectedVoice = null;
+    var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
+
+    function getAudioPreference(){ return localStorage.getItem("audioMode") || "synth"; }
+    function saveAudioPreference(){
+      let mode = document.getElementById("audioMode").value;
+      localStorage.setItem("audioMode", mode);
+    }
+    function loadVoices(){
+      var voices = window.speechSynthesis.getVoices();
+      selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                      voices.find(v => v.name.includes("Google italiano femminile")) ||
+                      voices.find(v => v.name.includes("Alice")) ||
+                      voices.find(v => v.lang === "it-IT");
+    }
+    function announceNumber(number, reparto){
+      let mode = getAudioPreference();
+      if(mode === "synth" && 'speechSynthesis' in window){
+        var msg = new SpeechSynthesisUtterance("Numero " + number);
+        msg.voice = selectedVoice; msg.rate = 0.7; msg.pitch = 1.0;
+        window.speechSynthesis.speak(msg);
+      }else{
+        audio.play().catch(()=>{});
+      }
+    }
+    function highlightNumber(el){
+      el.classList.add("highlight");
+      setTimeout(()=> el.classList.remove("highlight"), 5000);
+    }
+
+    // 🔁 Aggiorna numeri in tempo reale (come tua pagina)
+    socket.on("update_tickets", function(numeri){
+      for(var reparto in numeri){
+        var el = document.getElementById("ticket-" + reparto);
+        if(el){
+          var oldNumber = el.innerText;
+          el.innerText = numeri[reparto];
+          if(oldNumber != numeri[reparto]){
+            highlightNumber(el);
+            announceNumber(numeri[reparto], el.dataset.reparto);
+          }
+        }
+      }
+      // ogni update → ricarica cronologia del reparto specifico se presente
+      for(var reparto in numeri){
+        refreshHistory(parseInt(reparto));
+      }
+    });
+
+    // 📝 CRONOLOGIA
+    let currentRepartoId = null;
+
+    function setActiveTab(repartoId){
+      currentRepartoId = repartoId;
+      document.querySelectorAll('.reparto-tab').forEach(t => t.classList.remove('active'));
+      const btn = document.getElementById("tab-" + repartoId);
+      if(btn){ btn.classList.add('active'); }
+      refreshHistory(repartoId);
+    }
+
+    async function refreshHistory(repartoId){
+      if(!repartoId) return;
+      try{
+        const res = await fetch(`/api/cronologia/${repartoId}?limit=50`);
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json(); // [{id,numero,azione,provenienza,user_id,note,created_at}...]
+        renderHistory(data);
+      }catch(e){
+        console.error("Errore caricamento cronologia:", e);
+      }
+    }
+
+    function fmtDate(ts){
+      // ts già in ISO; mostra HH:MM:SS o data breve
+      try{
+        const d = new Date(ts);
+        return d.toLocaleString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      }catch{ return ts; }
+    }
+
+    function renderHistory(rows){
+      const box = document.getElementById("history-list");
+      if(!box) return;
+      box.innerHTML = "";
+      if(!rows || !rows.length){
+        box.innerHTML = `<div class="history-empty">Nessun evento recente.</div>`;
+        return;
+      }
+      rows.forEach(r=>{
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.dataset.azione = r.azione;
+        item.innerHTML = `
+          <div class="history-time">${fmtDate(r.created_at)}</div>
+          <div class="history-main">
+            <span class="badge badge-azione">${r.azione}</span>
+            <span class="badge badge-num">N° ${r.numero ?? '-'}</span>
+            ${r.provenienza ? `<span class="badge badge-provenienza">${r.provenienza}</span>` : ''}
+            ${r.note ? `<span class="note">• ${r.note}</span>` : ''}
+          </div>
+        `;
+        box.appendChild(item);
+      });
+    }
+
+    // Poll di sicurezza ogni 8s (oltre agli update websocket)
+    setInterval(()=>{ if(currentRepartoId){ refreshHistory(currentRepartoId); }}, 8000);
+
+    // Carosello immagini (come tua pagina)
+    document.addEventListener("DOMContentLoaded", function(){
+      // attiva la voce
+      window.speechSynthesis.onvoiceschanged = loadVoices; setTimeout(loadVoices, 500);
+
+      // set tab iniziale = primo reparto
+      const firstTab = document.querySelector('.reparto-tab');
+      if(firstTab){
+        const rid = parseInt(firstTab.dataset.id, 10);
+        setActiveTab(rid);
+      }
+
+      // carosello
+      let idx=0; const images = document.querySelector(".carousel-images");
+      if(images && images.children.length>0){
+        setInterval(()=>{ idx=(idx+1)%images.children.length; images.style.transform = `translateX(-${idx*100}%)`; }, 3000);
+      }
+
+      // ripristina preferenza audio UI se presente
+      const sel = document.getElementById("audioMode");
+      if(sel){ sel.value = getAudioPreference(); }
+    });
+  </script>
+</head>
+<body>
+
+  <!-- SINISTRA: CRONOLOGIA + CAROSELLO -->
+  <div class="left-section">
+    <div class="history-header">
+      <div class="history-title">🕘 Cronologia Ticket</div>
+      <!-- (facoltativo) piccola legenda colori -->
+    </div>
+
+    <!-- Tabs reparti (scegli quale cronologia vedere a sinistra) -->
+    <div class="reparto-tabs">
+      {% for reparto in reparti %}
+      <button class="reparto-tab" id="tab-{{ reparto[0] }}" data-id="{{ reparto[0] }}" onclick="setActiveTab({{ reparto[0] }})">
+        {{ reparto[1] }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Lista eventi -->
+    <div id="history-list" class="history-list">
+      <div class="history-empty">Seleziona un reparto per vedere gli eventi…</div>
+    </div>
+
+    <!-- Immagini in basso -->
+    <div class="carousel-container">
+      <div class="carousel-images">
+        {% for immagine in immagini %}
+          <img src="{{ immagine }}" alt="Immagine" />
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTRA: NUMERI CHIAMATI (identica alla tua) -->
+  <div class="right-section">
+    <h1>🔔 Ticket Chiamati 🔔</h1>
+    <div class="reparti-container">
+      {% for reparto in reparti %}
+      <div class="reparto-container">
+        <div class="reparto-nome">{{ reparto[1] }}</div>
+        <div class="ticket-number" id="ticket-{{ reparto[0] }}" data-reparto="{{ reparto[1] }}">
+          {{ numeri_chiamati[reparto[0]] if reparto[0] in numeri_chiamati else 0 }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Mini pannello audio (opzionale) -->
+    <div class="audio-panel">
+      <label for="audioMode" style="display:block;font-size:14px;">Modalità Audio:</label>
+      <select id="audioMode" onchange="saveAudioPreference()" style="font-size:14px;padding:5px;border-radius:5px;">
+        <option value="synth">🔊 Sintesi Vocale</option>
+        <option value="file">🎵 File Audio</option>
+      </select>
+    </div>
+  </div>
+
+</body>
+</html>
