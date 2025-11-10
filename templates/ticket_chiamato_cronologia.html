@@ -116,6 +116,57 @@
     .audio-panel{
       position:absolute; right:20px; bottom:20px; text-align:center;
     }
+	/* Lista cronologia */
+	.history-list {
+		flex: 1;
+		overflow-y: auto;
+		padding: 10px;
+		background: rgba(0,0,0,0.35);
+		border-radius: 8px;
+		border: 1px solid #333;
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* Mini ticket */
+	.history-ticket {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 8px 12px;
+		margin-bottom: 8px;
+		border-radius: 8px;
+		background: rgba(255,255,255,0.1);
+		border-left: 4px solid var(--brand);
+		font-size: 14px;
+		animation: fadeIn 0.4s ease-out;
+	}
+
+	.history-ticket .number {
+		font-size: 20px;
+		font-weight: bold;
+		color: #ffd400;
+	}
+
+	.history-ticket .reparto {
+		font-size: 14px;
+		opacity: 0.8;
+		margin-right: 8px;
+		text-transform: uppercase;
+	}
+
+	.history-ticket .time {
+		font-size: 12px;
+		color: #bbb;
+		margin-right: 10px;
+	}
+
+	/* Animazione entrata */
+	@keyframes fadeIn {
+		from {opacity:0; transform:translateY(8px);}
+		to   {opacity:1; transform:translateY(0);}
+	}
+
   </style>
 
   <script>
@@ -205,26 +256,34 @@
       }catch{ return ts; }
     }
 
-    function renderHistory(rows){
-      const box = document.getElementById("history-list");
-      if(!box) return;
-      box.innerHTML = "";
-      if(!rows || !rows.length){
-        box.innerHTML = `<div class="history-empty">Nessun evento recente.</div>`;
-        return;
-      }
-      rows.forEach(r=>{
-        const item = document.createElement('div');
-        item.className = 'history-item';
-        item.dataset.azione = r.azione;
-        item.innerHTML = `
-          <div class="history-time">${fmtDate(r.created_at)}</div>
-          <div class="history-main">
-            <span class="badge badge-azione">${r.azione}</span>
-            <span class="badge badge-num">N° ${r.numero ?? '-'}</span>
-            ${r.provenienza ? `<span class="badge badge-provenienza">${r.provenienza}</span>` : ''}
-            ${r.note ? `<span class="note">• ${r.note}</span>` : ''}
-          </div>
+    function renderHistory(rows) {
+		const box = document.getElementById("history-list");
+		if (!box) return;
+
+		box.innerHTML = "";
+		
+		if (!rows || !rows.length) {
+			box.innerHTML = `<div class="history-empty">Nessun evento</div>`;
+			return;
+		}
+
+		rows.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at)); // 🆕 oldest → newest
+
+		rows.forEach(r => {
+			const div = document.createElement("div");
+			div.className = "history-ticket";
+			div.innerHTML = `
+				<span class="time">${fmtDate(r.created_at)}</span>
+				<span class="reparto">${r.reparto_nome ?? ""}</span>
+				<span class="number">${r.numero ?? "-"}</span>
+			`;
+			box.appendChild(div);
+		});
+
+		// Auto scroll to bottom
+		box.scrollTop = box.scrollHeight;
+	}
+
         `;
         box.appendChild(item);
       });
@@ -276,9 +335,8 @@
     </div>
 
     <!-- Lista eventi -->
-    <div id="history-list" class="history-list">
-      <div class="history-empty">Seleziona un reparto per vedere gli eventi…</div>
-    </div>
+    <div id="history-list" class="history-list"></div>
+
 
     <!-- Immagini in basso -->
     <div class="carousel-container">
