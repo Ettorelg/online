@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Chiamato</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: white;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sezione sinistra (QR Code e immagini) ridotta al 40% */
+        .left-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            width: 40%;
+            padding: 10px;
+            background-color: #222;
+            border-right: 2px solid #ffcc00;
+        }
+
+        /* Parte superiore per QR Code */
+        .qrcode-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            flex-grow: 1; /* Occupa lo spazio disponibile fino alla metà della pagina */
+            max-height: 40%;
+			margin-bottom: 10px; /* Aggiunto spazio tra QR e carosello */
+        }
+
+        .qrcode-container {
+            flex-grow: 1; /* Il QR code occupa tutto lo spazio rimanente */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 50%;
+            max-width: 350px; /* Limite massimo per evitare distorsioni */
+            aspect-ratio: 1 / 1;
+        }
+
+        .qrcode {
+            width: 100%;
+            height: 100%;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        /* Parte inferiore per immagini a scorrimento */
+        .carousel-container {
+	    width: 100%;
+	    height: 100%;
+	    overflow: hidden;
+	    position: relative;
+	    display: flex;
+	    align-items: center;
+	    justify-content: center;
+	}
+	
+	.carousel-images {
+	    display: flex;
+	    transition: transform 1s ease-in-out;
+	    width: 100%;
+	    height: 100%;
+	}
+	
+	.carousel-images img {
+	    width: 100%;
+	    height: 100%;
+	    object-fit: contain; /* Evita il ritaglio dell'immagine */
+	    border-radius: 10px;
+	}
+
+
+        /* Sezione destra (Ticket Chiamati) aumentata al 60% */
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 60%;
+            padding: 20px;
+            background-color: #000;
+        }
+        .reparti-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+        }
+
+        .reparto-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .reparto-nome {
+            font-size: clamp(18px, 3vw, 30px);
+            font-weight: bold;
+            color: #ffcc00;
+            text-transform: uppercase;
+        }
+
+        .ticket-number {
+            font-size: clamp(50px, 8vw, 120px);
+            font-weight: bold;
+            padding: 20px;
+            background-color: #ffcc00;
+            color: black;
+            border-radius: 10px;
+            display: inline-block;
+            min-width: 150px;
+            text-align: center;
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+
+        .highlight {
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                background-color: #ffcc00;
+            }
+            to {
+                transform: scale(1.2);
+                background-color: #ff3300;
+            }
+        }
+
+        .voice-test {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+		.history-wrapper {
+			width: 100%;
+			max-height: 30%;
+			overflow-y: hidden;
+			padding: 10px;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		.history-title {
+			font-size: 22px;
+			text-align: center;
+			color: #ffcc00;
+		}
+
+		.history-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		.history-item {
+			background: rgba(255, 255, 255, 0.1);
+			padding: 10px;
+			border-radius: 10px;
+			display: flex;
+			flex-direction: row; /* 👈 Prima era column */
+			justify-content: space-between; /* 👈 Spaziati in orizzontale */
+			align-items: center;
+			gap: 5px;
+			font-weight: bold;
+			transition: transform 0.5s ease-in-out, background 0.3s ease-in-out;
+		}
+
+		.history-time {
+			font-size: 14px;
+			opacity: 0.7;
+			min-width: 55px; /* blocco orario fisso */
+			text-align: right;
+		}
+
+		.history-text {
+			font-size: 20px;
+			color: #ffcc00;
+			text-transform: uppercase;
+			flex: 1; /* occupa lo spazio centrale */
+			text-align: left;
+		}
+
+		.history-number {
+			font-size: 24px;
+			background: #ffcc00;
+			color: black;
+			padding: 6px 12px;
+			border-radius: 8px;
+			min-width: 50px;
+			text-align: center;
+		}
+
+		.history-item:hover {
+			transform: scale(1.03);
+			background: rgba(255, 255, 255, 0.18);
+		}
+
+
+		/* Animazione ingresso elemento cronologia */
+		.fade-in {
+		  animation: fadeInUp 350ms ease-out;
+		}
+
+		@keyframes fadeInUp {
+		  from {
+			opacity: 0;
+			transform: translateY(12px);
+		  }
+		  to {
+			opacity: 1;
+			transform: translateY(0);
+		  }
+		}
+
+		/* (opzionale) leggero highlight appena inserito */
+		.just-added {
+		  box-shadow: 0 0 0 2px #ffcc00 inset;
+		}
+
+
+    </style>
+<script>
+    var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
+        transports: ["websocket"],
+        secure: true,
+        reconnection: true
+    });
+	function getUserIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("user");
+}
+
+    var selectedVoice = null;
+    var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
+
+    function getAudioPreference() {
+        return localStorage.getItem("audioMode") || "synth"; 
+    }
+
+    function saveAudioPreference() {
+        let mode = document.getElementById("audioMode").value;
+        localStorage.setItem("audioMode", mode);
+        console.log("🎵 Modalità audio salvata:", mode);
+    }
+
+    function loadVoices() {
+        var voices = window.speechSynthesis.getVoices();
+        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                        voices.find(v => v.name.includes("Google italiano femminile")) ||
+                        voices.find(v => v.name.includes("Alice")) ||
+                        voices.find(v => v.name.toLowerCase().includes("female")) ||
+                        voices.find(v => v.lang === "it-IT");
+
+        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+    }
+
+    function announceNumber(number, reparto) {
+        let mode = getAudioPreference();
+
+        if (mode === "synth" && 'speechSynthesis' in window) {
+            var msg = new SpeechSynthesisUtterance("Numero " + number);
+            msg.voice = selectedVoice;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
+
+    function highlightNumber(element) {
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 5000);
+    }
+
+    socket.on("update_tickets", function(numeri) {
+        for (var reparto in numeri) {
+            var ticketElement = document.getElementById("ticket-" + reparto);
+            if (ticketElement) {
+                var oldNumber = ticketElement.innerText;
+                ticketElement.innerText = numeri[reparto];
+
+                if (oldNumber != numeri[reparto]) {
+                    highlightNumber(ticketElement);
+                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                }
+            }
+        }
+		loadHistory(); // <— aggiungi questa riga alla fine
+    });
+
+	// 👇 SOSTITUISCI la funzione
+	async function loadHistory(limit = 50) {
+	  try {
+		const userId = "{{ user_id }}";            // passato dal template
+		const cacheBust = Date.now();
+		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
+		const data = await res.json();
+
+		const ul = document.getElementById("historyList");
+		if (!ul) return;
+
+		ul.innerHTML = "";
+		data.forEach(item => {
+		  const li = document.createElement("li");
+		  li.className = "history-item";
+		  li.innerHTML = `
+			  <span class="history-number">${item.numero}</span>
+			  <span class="history-text">${item.reparto}</span>
+			  <span class="history-time">${item.ora ?? ""}</span>
+			`;
+
+			
+		  ul.appendChild(li);
+		});
+	  } catch (e) {
+		console.error("Errore fetch cronologia:", e);
+	  }
+	}
+	
+	// 👇 AGGIUNGI alla fine del tuo handler Socket
+	socket.on("update_tickets", function(numeri) {
+	  // ... tuo codice esistente che aggiorna i numeri ...
+		loadHistory(); // <-- aggiungi questa riga
+		function appendHistoryItem(listEl, item) {
+		  const li = document.createElement("li");
+		  li.className = "history-item fade-in just-added";
+		  li.innerHTML = `
+			<span class="history-time">${item.ora ?? ""}</span>
+			<span class="history-text">${item.reparto} ➜ Ticket ${item.numero}</span>
+		  `;
+
+		  // metti in cima
+		  listEl.prepend(li);
+
+		  // rimuovi il bordo evidenziato dopo un attimo
+		  setTimeout(() => li.classList.remove("just-added"), 600);
+
+		  // mantieni solo 10 elementi
+		  while (listEl.children.length > 10) {
+			listEl.removeChild(listEl.lastChild);
+		  }
+		}
+
+	});
+
+	// Avvio + (facoltativo) polling
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000); // opzionale
+	});
+
+
+	// aggiorna la cronologia quando arrivano nuove chiamate
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	// avvio + polling leggero
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000);
+	});
+
+
+	// Aggiorna cronologia quando cambia un ticket
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	setInterval(loadHistory, 15000); // refresh ogni 15s
+	document.addEventListener("DOMContentLoaded", loadHistory);
+
+
+
+
+    function testVoice() {
+        let mode = getAudioPreference();
+        if (mode === "synth") {
+            var msg = new SpeechSynthesisUtterance("Audio attivato");
+            msg.voice = selectedVoice;
+            msg.rate = 0.6;
+            msg.pitch = 1.2;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let qrContainer = document.getElementById("qrcode");
+
+
+        // Scorrimento immagini
+        let currentIndex = 0;
+        const images = document.querySelector(".carousel-images");
+        setInterval(() => {
+            currentIndex = (currentIndex + 1) % images.children.length;
+            images.style.transform = `translateX(-${currentIndex * 100}%)`;
+        }, 3000);
+
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        setTimeout(loadVoices, 500);
+		const audioModeSelect = document.getElementById("audioMode");
+        if (audioModeSelect) {
+            audioModeSelect.value = getAudioPreference();
+        }
+    });
+	
+</script>
+
+</head>
+<body>
+<div class="left-section">
+	<div class="history-wrapper">
+		<h2 class="history-title">🕘 Cronologia Ticket</h2>
+		<ul class="history-list" id="historyList"></ul>
+	</div>
+
+
+    <!-- Immagini a scorrimento in basso -->
+    <div class="carousel-container">
+        <div class="carousel-images">
+            {% for immagine in immagini %}
+            <img src="{{ immagine }}" alt="Immagine" />
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="right-section">
+    <h1>🔔 Ticket Chiamati 🔔</h1>
+    <div class="reparti-container">
+        {% for reparto in reparti %}
+        <div class="reparto-container">
+            <div class="reparto-nome">{{ reparto[1] }}</div>
+            <div class="ticket-number" id="ticket-{{ reparto[0] }}" data-reparto="{{ reparto[1] }}">
+                {{ numeri_chiamati[reparto[0]] if reparto[0] in numeri_chiamati else 0 }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+<div style="position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer; text-align: center;">
+
+    <div class="audio-mode-container" style="display: flex; gap: 10px; align-items: center; justify-content: center;">
+        <span id="synthMode" class="audio-icon active" onclick="setAudioMode('synth')" style="font-size: 24px; cursor: pointer; opacity: 1; transition: transform 0.2s, opacity 0.2s;">🔊</span>
+        <span id="fileMode" class="audio-icon" onclick="setAudioMode('file')" style="font-size: 24px; cursor: pointer; opacity: 0.5; transition: transform 0.2s, opacity 0.2s;">🎵</span>
+    <label for="audioMode" style="display: block; font-size: 14px;">Modalità Audio:</label>
+    <select id="audioMode" onchange="saveAudioPreference()" style="font-size: 14px; padding: 5px; border-radius: 5px;">
+        <option value="synth">🔊 Sintesi Vocale</option>
+        <option value="file">🎵 File Audio</option>
+    </select>
+	</div>
+	 
+	
+</div>
+
+
+
+
+</div>
+
+</body>
+</html>
