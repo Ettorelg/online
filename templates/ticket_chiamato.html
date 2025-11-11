@@ -155,11 +155,12 @@
         }
     </style>
 <script>
-    var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
-        transports: ["websocket"],
-        secure: true,
-        reconnection: true
-    });
+	var socket = io("wss://software.alphasystemsrl.it", {
+		transports: ["websocket"],
+		secure: true,
+		reconnection: true
+	});
+
 	function getUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get("user");
