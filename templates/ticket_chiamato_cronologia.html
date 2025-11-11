@@ -284,7 +284,7 @@
         let mode = getAudioPreference();
 
         if (mode === "synth" && 'speechSynthesis' in window) {
-            var msg = new SpeechSynthesisUtterance("Numero " + number);
+            var msg = new SpeechSynthesisUtterance(reparto+ " " + number);
             msg.voice = selectedVoice;
             msg.rate = 0.7;
             msg.pitch = 1.0;
