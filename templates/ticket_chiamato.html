@@ -210,7 +210,7 @@
 
     socket.on("update_tickets", function(numeri) {
         for (var reparto in numeri) {
-            var ticketElement = document.getElementById("ticket-" + reparto);
+            var ticketElement = document.getElementById(reparto+ " " + number);
             if (ticketElement) {
                 var oldNumber = ticketElement.innerText;
                 ticketElement.innerText = numeri[reparto];

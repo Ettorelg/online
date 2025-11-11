@@ -316,9 +316,9 @@
     });
 
 	// 👇 SOSTITUISCI la funzione
-	async function loadHistory(limit = 50) {
+	async function loadHistory(limit = 10) {
 	  try {
-		const userId = "{{ user_id }}";            // passato dal template
+		const userId = "{{ user_id }}";
 		const cacheBust = Date.now();
 		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
@@ -330,19 +330,24 @@
 		data.forEach(item => {
 		  const li = document.createElement("li");
 		  li.className = "history-item";
-		  li.innerHTML = `
-			  <span class="history-number">${item.numero}</span>
-			  <span class="history-text">${item.reparto}</span>
-			  <span class="history-time">${item.ora ?? ""}</span>
-			`;
 
-			
+		  const oraIt = item.ora 
+			? new Date(item.ora).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+			: "";
+
+		  li.innerHTML = `
+			<span class="history-number">${item.numero}</span>
+			<span class="history-text">${item.reparto}</span>
+			<span class="history-time">${oraIt}</span>
+		  `;
+
 		  ul.appendChild(li);
 		});
 	  } catch (e) {
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
+
 	
 	// 👇 AGGIUNGI alla fine del tuo handler Socket
 	socket.on("update_tickets", function(numeri) {
