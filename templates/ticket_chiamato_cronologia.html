@@ -314,11 +314,10 @@
         }
 		loadHistory(); // <— aggiungi questa riga alla fine
     });
-
-	// 👇 SOSTITUISCI la funzione
+// 👇 SOSTITUISCI la funzione
 	async function loadHistory(limit = 10) {
 	  try {
-		const userId = "{{ user_id }}";            // passato dal template
+		const userId = "{{ user_id }}"; // dal template
 		const cacheBust = Date.now();
 		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
@@ -327,48 +326,43 @@
 		if (!ul) return;
 
 		ul.innerHTML = "";
-		data.forEach(item => {
+		data.slice(0, 10).forEach(item => {
+		  // Ora IT con +1h, robusta a ISO o "HH:MM"
+		  let displayTime = "";
+		  if (item.created_at) {
+			const d = new Date(item.created_at);
+			if (!isNaN(d)) {
+			  d.setHours(d.getHours() + 1); // +1 ora
+			  displayTime = new Intl.DateTimeFormat("it-IT", {
+				hour: "2-digit",
+				minute: "2-digit",
+				timeZone: "Europe/Rome"
+			  }).format(d);
+			}
+		  }
+		  if (!displayTime) {
+			if (item.ora && item.ora.includes(":")) {
+			  let [h, m] = item.ora.split(":");
+			  h = (parseInt(h, 10) + 1) % 24; // fallback +1h su stringa HH:MM
+			  displayTime = `${String(h).padStart(2, "0")}:${m}`;
+			} else {
+			  displayTime = ""; // fallback finale
+			}
+		  }
+
 		  const li = document.createElement("li");
 		  li.className = "history-item";
 		  li.innerHTML = `
-			  <span class="history-number">${item.numero}</span>
-			  <span class="history-text">${item.reparto}</span>
-			  <span class="history-time">${item.ora ?? ""}</span>
-			`;
-
-			
+			<span class="history-number">${item.numero}</span>
+			<span class="history-text">${item.reparto}</span>
+			<span class="history-time">${displayTime}</span>
+		  `;
 		  ul.appendChild(li);
 		});
 	  } catch (e) {
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
-	
-	// 👇 AGGIUNGI alla fine del tuo handler Socket
-	socket.on("update_tickets", function(numeri) {
-	  // ... tuo codice esistente che aggiorna i numeri ...
-		loadHistory(); // <-- aggiungi questa riga
-		function appendHistoryItem(listEl, item) {
-		  const li = document.createElement("li");
-		  li.className = "history-item fade-in just-added";
-		  li.innerHTML = `
-			<span class="history-time">${item.ora ?? ""}</span>
-			<span class="history-text">${item.reparto} ➜ Ticket ${item.numero}</span>
-		  `;
-
-		  // metti in cima
-		  listEl.prepend(li);
-
-		  // rimuovi il bordo evidenziato dopo un attimo
-		  setTimeout(() => li.classList.remove("just-added"), 600);
-
-		  // mantieni solo 10 elementi
-		  while (listEl.children.length > 10) {
-			listEl.removeChild(listEl.lastChild);
-		  }
-		}
-
-	});
 
 	// Avvio + (facoltativo) polling
 	document.addEventListener("DOMContentLoaded", function () {
