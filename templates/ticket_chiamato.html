@@ -155,7 +155,7 @@
         }
     </style>
 <script>
-	var socket = io("wss://software.alphasystemsrl.it", {
+    var socket = io("wss://software.alphasystemsrl.it", {
 		transports: ["websocket"],
 		secure: true,
 		reconnection: true
@@ -210,19 +210,22 @@
     }
 
     socket.on("update_tickets", function(numeri) {
-        for (var reparto in numeri) {
-            var ticketElement = document.getElementById(reparto+ " " + number);
-            if (ticketElement) {
-                var oldNumber = ticketElement.innerText;
-                ticketElement.innerText = numeri[reparto];
+		for (const repartoId in numeri) {
+			const ticketElement = document.getElementById("ticket-" + repartoId);
+			if (!ticketElement) continue;
 
-                if (oldNumber != numeri[reparto]) {
-                    highlightNumber(ticketElement);
-                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
-                }
-            }
-        }
-    });
+			const oldNumber = ticketElement.innerText;
+			const newNumber = numeri[repartoId];
+
+			ticketElement.innerText = newNumber;
+
+			if (oldNumber != String(newNumber)) {
+				highlightNumber(ticketElement);
+				announceNumber(newNumber, ticketElement.dataset.reparto);
+			}
+		}
+	});
+
 
 
 
