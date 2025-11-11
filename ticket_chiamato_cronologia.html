@@ -155,7 +155,7 @@
         }
 		.history-wrapper {
 			width: 100%;
-			max-height: 30%;
+			max-height: 50%;
 			overflow-y: hidden;
 			padding: 10px;
 			display: flex;
@@ -177,21 +177,22 @@
 
 		.history-item {
 			background: rgba(255, 255, 255, 0.1);
-			padding: 10px;
-			border-radius: 10px;
+			padding: 4px 8px; /* ridotto da 10px */
+			border-radius: 6px; /* più stretto */
 			display: flex;
-			flex-direction: row; /* 👈 Prima era column */
-			justify-content: space-between; /* 👈 Spaziati in orizzontale */
+			flex-direction: row;
+			justify-content: space-between;
 			align-items: center;
-			gap: 5px;
+			gap: 4px;
 			font-weight: bold;
-			transition: transform 0.5s ease-in-out, background 0.3s ease-in-out;
+			margin-bottom: 3px; /* aggiunto per ridurre spazio verticale */
+			transition: transform 0.3s ease-in-out, background 0.2s ease-in-out;
 		}
 
 		.history-time {
 			font-size: 14px;
 			opacity: 0.7;
-			min-width: 55px; /* blocco orario fisso */
+			min-width: 50px;
 			text-align: right;
 		}
 
@@ -199,25 +200,27 @@
 			font-size: 20px;
 			color: #ffcc00;
 			text-transform: uppercase;
-			flex: 1; /* occupa lo spazio centrale */
+			flex: 1;
 			text-align: left;
+			white-space: nowrap;       /* evita che vada a capo */
+			overflow: hidden;
+			text-overflow: ellipsis;
 		}
 
 		.history-number {
 			font-size: 24px;
 			background: #ffcc00;
 			color: black;
-			padding: 6px 12px;
-			border-radius: 8px;
-			min-width: 50px;
+			padding: 4px 10px; /* ridotto */
+			border-radius: 6px;
+			min-width: 42px;
 			text-align: center;
 		}
 
 		.history-item:hover {
-			transform: scale(1.03);
-			background: rgba(255, 255, 255, 0.18);
+			transform: scale(1.02);
+			background: rgba(255, 255, 255, 0.16);
 		}
-
 
 		/* Animazione ingresso elemento cronologia */
 		.fade-in {
@@ -281,7 +284,7 @@
         let mode = getAudioPreference();
 
         if (mode === "synth" && 'speechSynthesis' in window) {
-            var msg = new SpeechSynthesisUtterance("Numero " + number);
+            var msg = new SpeechSynthesisUtterance(reparto+ " " + number);
             msg.voice = selectedVoice;
             msg.rate = 0.7;
             msg.pitch = 1.0;
@@ -313,9 +316,9 @@
     });
 
 	// 👇 SOSTITUISCI la funzione
-	async function loadHistory(limit = 50) {
+	async function loadHistory(limit = 10) {
 	  try {
-		const userId = "{{ user_id }}";            // passato dal template
+		const userId = "{{ user_id }}";
 		const cacheBust = Date.now();
 		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
@@ -324,22 +327,37 @@
 		if (!ul) return;
 
 		ul.innerHTML = "";
-		data.forEach(item => {
-		  const li = document.createElement("li");
-		  li.className = "history-item";
-		  li.innerHTML = `
-			  <span class="history-number">${item.numero}</span>
-			  <span class="history-text">${item.reparto}</span>
-			  <span class="history-time">${item.ora ?? ""}</span>
-			`;
+		// calcola ora in formato italiano (Europe/Rome) in modo robusto
+		let displayTime = "";
+		if (item.created_at) {
+		  const d = new Date(item.created_at); // ISO dal server
+		  if (!isNaN(d)) {
+			displayTime = new Intl.DateTimeFormat("it-IT", {
+			  hour: "2-digit",
+			  minute: "2-digit",
+			  timeZone: "Europe/Rome"
+			}).format(d);
+		  }
+		}
+		// fallback: se il server già manda "HH:MM", usalo senza parse
+		if (!displayTime) {
+		  displayTime = item.ora || "";
+		}
 
-			
+		li.innerHTML = `
+		  <span class="history-number">${item.numero}</span>
+		  <span class="history-text">${item.reparto}</span>
+		  <span class="history-time">${displayTime}</span>
+		`;
+
+
 		  ul.appendChild(li);
 		});
 	  } catch (e) {
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
+
 	
 	// 👇 AGGIUNGI alla fine del tuo handler Socket
 	socket.on("update_tickets", function(numeri) {
