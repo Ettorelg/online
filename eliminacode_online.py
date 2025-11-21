@@ -1178,10 +1178,10 @@ def ticket_chiamato_cronologia():
         
 @app.route("/api/cronologia_utente")
 def api_cronologia_utente():
-    # usa ?user=... se presente, altrimenti la sessione
-    user_id = request.args.get("user", type=int) or session.get("user_id")
+    # ✅ SOLO utente loggato, niente parametro ?user=
+    user_id = session.get("user_id")
     if not user_id:
-        return jsonify([])
+        return jsonify([]), 401  # non loggato
 
     limit = request.args.get("limit", default=50, type=int)
 
@@ -1201,13 +1201,14 @@ def api_cronologia_utente():
     db.close()
 
     data = [{
-        "reparto":   r[0],
-        "numero":    r[1],
-        "azione":    r[2],
+        "reparto":    r[0],
+        "numero":     r[1],
+        "azione":     r[2],
         "created_at": r[3].isoformat(),
-        "ora":       r[3].strftime("%H:%M")   # comodo per la UI
+        "ora":        r[3].strftime("%H:%M")
     } for r in rows]
     return jsonify(data)
+
 
 def get_ticket_data(reparto_id):
     conn = psycopg2.connect(DATABASE_URL)
