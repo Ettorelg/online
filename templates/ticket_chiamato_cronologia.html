@@ -318,9 +318,8 @@
 // 👇 SOSTITUISCI la funzione
 	async function loadHistory(limit = 10) {
 	  try {
-		const userId = "{{ user_id }}"; // dal template
 		const cacheBust = Date.now();
-		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
+		const res = await fetch(`/api/cronologia_utente?limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
 
 		const ul = document.getElementById("historyList");
