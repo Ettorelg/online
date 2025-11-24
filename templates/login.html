@@ -34,10 +34,12 @@
             text-align: center;
         }
 
-        .logo {
-            width: 150px;
-            margin-bottom: 10px;
-        }
+		.logo {
+			width: 240px;           /* aumentato da 150px */
+			max-width: 80%;         /* evita che superi la card su schermi piccoli */
+			margin-bottom: 20px;    
+		}
+
 
         h2 {
             margin: 5px 0 25px 0;
@@ -135,12 +137,12 @@
     <div class="login-card">
 
         <!-- Logo AlphaSystem -->
-        <img src="/static/logo.png" 
+        <img src="static/logo1.png" 
 			 alt="AlphaSystem Logo" 
 			 class="logo">
 
 
-        <h2>Accedi al tuo pannello</h2>
+
 
         <form method="POST">
             <div class="form-group">
