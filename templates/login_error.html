@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Errore Login - Eliminacode</title>
+
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            background: url("/static/background.png") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(1px);
+            z-index: -1;
+        }
+
+        .error-card {
+            background: white;
+            padding: 40px 35px;
+            border-radius: 18px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.12);
+            text-align: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .logo {
+            width: 230px;
+            max-width: 85%;
+            margin-bottom: 20px;
+        }
+
+        .error-title {
+            font-size: 26px;
+            font-weight: 600;
+            color: #cc0000;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        .btn-back {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(to right, #aa0000, #dd0000);
+            color: white;
+            font-size: 17px;
+            font-weight: 600;
+
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        .btn-back:hover {
+            transform: scale(1.03);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="error-card">
+
+        <img src="/static/logo1.png" alt="Logo" class="logo">
+
+        <div class="error-title">⚠️ Accesso Negato</div>
+
+        <div class="error-message">
+            Username o password errati.<br>
+            Per favore riprova.
+        </div>
+
+        <button class="btn-back" onclick="window.location.href='/login'">
+            Torna al Login
+        </button>
+    </div>
+
+</body>
+</html>
