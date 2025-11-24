@@ -139,6 +139,16 @@
             color: white;
             transform: scale(1.05);
         }
+		.error-box {
+            background: rgba(220, 53, 69, 0.12);
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
     </style>
 </head>
 
@@ -150,6 +160,12 @@
         <img src="static/logo1.png" 
 			 alt="AlphaSystem Logo" 
 			 class="logo">
+			 
+		{% if error %}
+        <div class="error-box">
+            {{ error }}
+        </div>
+        {% endif %}
 
 
 
