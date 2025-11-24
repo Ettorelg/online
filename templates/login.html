@@ -6,21 +6,31 @@
     <title>Login - Eliminacode</title>
 
     <style>
-        body {
-            font-family: 'Inter', Arial, sans-serif;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+		body {
+			font-family: 'Inter', Arial, sans-serif;
+			margin: 0;
+			height: 100vh;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
 
-            /* sfondo moderno come alphasystemsrl */
-            background: #f4f7fb;
-            background-image: 
-                radial-gradient(circle at 20% 20%, rgba(0,123,255,0.10) 0%, transparent 60%),
-                radial-gradient(circle at 80% 80%, rgba(0,200,255,0.10) 0%, transparent 60%);
-        }
+			/* 🔥 SFONDO IMMAGINE */
+			background: url("/static/background.png") no-repeat center center fixed;
+			background-size: cover;
+		}
+		body::before {
+			content: "";
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.35); /* leggero scurimento */
+			backdrop-filter: blur(1px);
+			z-index: -1;
+		}
+
 
         .login-card {
             background: white;
@@ -161,7 +171,7 @@
     </div>
 
     <!-- Download App -->
-    <a href="/app-debug.apk" class="download-app" download>
+    <a href="/download/app-debug.apk" class="download-app" download>
         📥 Scarica l'App Android
     </a>
 
