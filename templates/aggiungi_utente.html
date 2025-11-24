@@ -4,6 +4,121 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aggiungi Utente</title>
+
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background: url("/static/background.png") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(1px);
+            z-index: -1;
+        }
+
+        .card {
+            background: white;
+            padding: 35px 35px;
+            border-radius: 18px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.12);
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .logo {
+            width: 220px;
+            display: block;
+            margin: 0 auto 15px auto;
+        }
+
+        h2 {
+            text-align: center;
+            color: #003366;
+            font-size: 27px;
+            font-weight: 600;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 14px;
+            display: block;
+            margin-bottom: 6px;
+            color: #003366;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 15px;
+            border-radius: 8px;
+            border: 1px solid #c9d6e2;
+            outline: none;
+            transition: 0.2s ease;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(to right, #004aad, #007bff);
+            color: white;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.25s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: scale(1.03);
+        }
+
+        .back {
+            display: block;
+            text-align: center;
+            margin-top: 18px;
+            color: white;
+            font-size: 16px;
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
     <h2>Aggiungi un Nuovo Utente</h2>
