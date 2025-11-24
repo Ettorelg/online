@@ -2,44 +2,234 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modifica Utente</title>
+
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background: url("/static/background.png") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.35);
+            backdrop-filter: blur(1px);
+            z-index: -1;
+        }
+
+        .card {
+            background: white;
+            padding: 24px 24px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 720px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .logo {
+            width: 180px;
+            max-width: 70%;
+            display: block;
+            margin: 0 auto 10px auto;
+        }
+
+        h2 {
+            text-align: center;
+            color: #003366;
+            font-size: 22px;
+            font-weight: 600;
+            margin: 8px 0 22px 0;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 13px;
+            display: block;
+            margin-bottom: 4px;
+            color: #003366;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid #c9d6e2;
+            outline: none;
+            transition: 0.2s ease;
+        }
+
+        input:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.18);
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            width: auto;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(to right, #004aad, #007bff);
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 6px;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+        }
+
+        .back {
+            display: block;
+            text-align: center;
+            margin-top: 12px;
+            color: white;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .card {
+                max-width: 95vw;
+                padding: 20px 16px;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+        }
+    </style>
 </head>
+
 <body>
-    <h2>Modifica Utente</h2>
-    <form method="POST">
-        <label>Username:</label>
-        <input type="text" name="username" value="{{ user[0] }}" required><br>
 
-        <label>Password:</label>
-        <input type="text" name="password" value="{{ user[1] }}" required><br>
+    <div class="card">
 
-        <label>Admin:</label>
-        <input type="checkbox" name="admin" {% if user[2] %}checked{% endif %}><br>
+        <img src="/static/logo1.png" class="logo" alt="AlphaSystem Logo">
 
-        <label>Ragione Sociale:</label>
-        <input type="text" name="ragione_sociale" value="{{ user[3] }}"><br>
+        <h2>Modifica Utente</h2>
 
-        <label>Indirizzo:</label>
-        <input type="text" name="indirizzo" value="{{ user[4] }}"><br>
+        <form method="POST">
 
-        <label>Città:</label>
-        <input type="text" name="citta" value="{{ user[5] }}"><br>
+            <!-- Username + Password -->
+            <div class="form-row">
+                <div class="form-group">
+					<label>Username:</label>
+					<input type="text" name="username" value="{{ user[0] }}" required><br>
+				</div>
 
-        <label>CAP:</label>
-        <input type="text" name="cap" value="{{ user[6] }}"><br>
+                <div class="form-group">
+					<label>Password:</label>
+					<input type="text" name="password" value="{{ user[1] }}" required><br>
+                </div>
+            </div>
 
-        <label>Partita IVA:</label>
-        <input type="text" name="partita_iva" value="{{ user[7] }}"><br>
+            <!-- Admin checkbox -->
+            <div class="checkbox-row">
+				<label>Admin:</label>
+				<input type="checkbox" name="admin" {% if user[2] %}checked{% endif %}><br>
+            </div>
 
-        <label>Telefono:</label>
-        <input type="text" name="telefono" value="{{ user[8] }}"><br>
+            <!-- Ragione sociale -->
+            <div class="form-group">
+				<label>Ragione Sociale:</label>
+				<input type="text" name="ragione_sociale" value="{{ user[3] }}"><br>
+			</div>
 
-        <label>Email:</label>
-        <input type="email" name="email" value="{{ user[9] }}"><br>
+            <!-- Indirizzo + Città -->
+            <div class="form-row">
+                <div class="form-group">
+					<label>Indirizzo:</label>
+					<input type="text" name="indirizzo" value="{{ user[4] }}"><br>
+                </div>
 
-        <button type="submit">Salva Modifiche</button>
-    </form>
-    <br>
-    <a href="/dashboard_admin">Torna alla Dashboard</a>
+                <div class="form-group">
+					<label>Città:</label>
+					<input type="text" name="citta" value="{{ user[5] }}"><br>
+				</div>
+            </div>
+
+            <!-- CAP + Partita IVA -->
+            <div class="form-row">
+                <div class="form-group">
+					<label>CAP:</label>
+					<input type="text" name="cap" value="{{ user[6] }}"><br>
+                </div>
+
+                <div class="form-group">
+					<label>Partita IVA:</label>
+					<input type="text" name="partita_iva" value="{{ user[7] }}"><br>
+                </div>
+            </div>
+
+            <!-- Telefono + Email -->
+            <div class="form-row">
+                <div class="form-group">
+					<label>Telefono:</label>
+					<input type="text" name="telefono" value="{{ user[8] }}"><br>
+                </div>
+
+                <div class="form-group">
+					<label>Email:</label>
+					<input type="email" name="email" value="{{ user[9] }}"><br>
+                </div>
+            </div>
+
+            <button class="btn" type="submit">Salva Modifiche</button>
+        </form>
+
+        <a href="/dashboard_admin" class="back">⬅ Torna alla Dashboard</a>
+
+    </div>
+
 </body>
 </html>
