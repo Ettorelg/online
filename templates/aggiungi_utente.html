@@ -32,50 +32,66 @@
 
         .card {
             background: white;
-            padding: 35px 35px;
-            border-radius: 18px;
+            padding: 24px 24px;
+            border-radius: 16px;
             width: 100%;
-            max-width: 520px;
-            box-shadow: 0 10px 35px rgba(0,0,0,0.12);
-            animation: fadeIn 0.4s ease-out;
+            max-width: 720px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+            animation: fadeIn 0.3s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.96); }
+            from { opacity: 0; transform: scale(0.97); }
             to   { opacity: 1; transform: scale(1); }
         }
 
         .logo {
-            width: 220px;
+            width: 180px;
+            max-width: 70%;
             display: block;
-            margin: 0 auto 15px auto;
+            margin: 0 auto 10px auto;
         }
 
         h2 {
             text-align: center;
             color: #003366;
-            font-size: 27px;
+            font-size: 22px;
             font-weight: 600;
-            margin-bottom: 25px;
+            margin: 8px 0 18px 0;
+        }
+
+        form {
+            margin-top: 5px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
         }
 
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 12px;
         }
 
         label {
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             color: #003366;
         }
 
         input, select {
             width: 100%;
-            padding: 12px 14px;
-            font-size: 15px;
-            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 14px;
+            border-radius: 6px;
             border: 1px solid #c9d6e2;
             outline: none;
             transition: 0.2s ease;
@@ -83,40 +99,57 @@
 
         input:focus {
             border-color: #007bff;
-            box-shadow: 0 0 0 3px rgba(0,123,255,0.2);
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.18);
         }
 
         .checkbox-row {
             display: flex;
             align-items: center;
             gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            width: auto;
         }
 
         .btn {
             width: 100%;
-            padding: 13px;
+            padding: 10px;
             background: linear-gradient(to right, #004aad, #007bff);
             color: white;
-            font-size: 17px;
+            font-size: 15px;
             font-weight: 600;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: 0.25s;
-            margin-top: 10px;
+            transition: 0.2s;
+            margin-top: 6px;
         }
 
         .btn:hover {
-            transform: scale(1.03);
+            transform: scale(1.02);
         }
 
         .back {
             display: block;
             text-align: center;
-            margin-top: 18px;
+            margin-top: 12px;
             color: white;
-            font-size: 16px;
+            font-size: 14px;
             text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .card {
+                max-width: 95vw;
+                padding: 20px 16px;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
         }
     </style>
 </head>
@@ -125,58 +158,77 @@
 
     <div class="card">
 
-        <img src="/static/logo1.png" class="logo">
+        <img src="/static/logo1.png" class="logo" alt="AlphaSystem Logo">
 
         <h2>Aggiungi Nuovo Utente</h2>
 
         <form method="POST">
 
-            <div class="form-group">
-				<label for="username">Username:</label>
-				<input type="text" id="username" name="username" required>
+            <!-- Username + Password -->
+            <div class="form-row">
+                <div class="form-group">
+					<label for="username">Username:</label>
+					<input type="text" id="username" name="username" required>
 
-                <label for="password">Password:</label>
-				<input type="password" id="password" name="password" required>
-			</div>
+                </div>
 
-            <div class="form-group checkbox-row">
+                <div class="form-group">
+					<label for="password">Password:</label>
+					<input type="password" id="password" name="password" required>
+				</div>
+            </div>
+
+            <!-- Admin checkbox -->
+            <div class="checkbox-row">
 				<label for="admin">Admin:</label>
 				<input type="checkbox" id="admin" name="admin">	
             </div>
 
+            <!-- Ragione sociale (intera riga) -->
             <div class="form-group">
 				<label for="ragione_sociale">Ragione Sociale:</label>
 				<input type="text" id="ragione_sociale" name="ragione_sociale" required>
+     
             </div>
 
-            <div class="form-group">
-				<label for="indirizzo">Indirizzo:</label>
-				<input type="text" id="indirizzo" name="indirizzo" required>
+            <!-- Indirizzo + Città -->
+            <div class="form-row">
+                <div class="form-group">
+					<label for="indirizzo">Indirizzo:</label>
+					<input type="text" id="indirizzo" name="indirizzo" required>
+                </div>
+
+                <div class="form-group">
+					<label for="citta">Città:</label>
+					<input type="text" id="citta" name="citta" required>
+
+                </div>
             </div>
 
-            <div class="form-group">
-				<label for="citta">Città:</label>
-				<input type="text" id="citta" name="citta" required>
+            <!-- CAP + Partita IVA -->
+            <div class="form-row">
+                <div class="form-group">
+					<label for="cap">CAP:</label>
+					<input type="text" id="cap" name="cap" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="partita_iva">Partita IVA:</label>
+					<input type="text" id="partita_iva" name="partita_iva" required>
+                </div>
             </div>
 
-            <div class="form-group">
-				<label for="cap">CAP:</label>
-				<input type="text" id="cap" name="cap" required>
-            </div>
+            <!-- Telefono + Email -->
+            <div class="form-row">
+                <div class="form-group">
+					<label for="telefono">Telefono:</label>
+					<input type="text" id="telefono" name="telefono" required>
+                </div>
 
-            <div class="form-group">
-				<label for="partita_iva">Partita IVA:</label>
-				<input type="text" id="partita_iva" name="partita_iva" required>
-			</div>
-
-            <div class="form-group">
-				<label for="telefono">Telefono:</label>
-				<input type="text" id="telefono" name="telefono" required>
-            </div>
-
-            <div class="form-group">
-				<label for="email">Email:</label>
-				<input type="email" id="email" name="email" required>
+                <div class="form-group">
+					<label for="email">Email:</label>
+					<input type="email" id="email" name="email" required>
+                </div>
             </div>
 
             <button class="btn" type="submit">Aggiungi Utente</button>
