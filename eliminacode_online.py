@@ -223,7 +223,7 @@ def login():
             return redirect("/dashboard_admin") if is_admin else redirect("/dashboard_user")
         else:
             db.close()
-            return "Login fallito! Username o password errati."
+            return render_template("login.html", error="Username o password errati.")
 
     return render_template("login.html")
 
