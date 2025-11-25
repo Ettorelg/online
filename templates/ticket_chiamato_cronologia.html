@@ -24,7 +24,6 @@
             justify-content: space-between;
             align-items: center;
             width: 30%;
-            padding: 10px;
             background-color: #222;
             border-right: 2px solid #ffcc00;
         }
@@ -37,8 +36,7 @@
             align-items: center;
             width: 100%;
             flex-grow: 1; /* Occupa lo spazio disponibile fino alla metà della pagina */
-            max-height: 40%;
-			margin-bottom: 10px; /* Aggiunto spazio tra QR e carosello */
+            max-height: 30%;
         }
 
         .qrcode-container {
@@ -160,7 +158,6 @@
 			padding: 10px;
 			display: flex;
 			flex-direction: column;
-			gap: 10px;
 		}
 
 		.history-title {
@@ -488,6 +485,32 @@
     document.addEventListener("DOMContentLoaded", function () {
         let qrContainer = document.getElementById("qrcode");
 
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+
+            // 🔹 Ottieni l'ID dell'utente dal backend
+            let userId = "{{ user_id }}";
+
+            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code con l'ID dell'utente
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+
+            console.log("✅ QR Code generato con successo per user_id:", userId);
+        }
+
+        // 🔹 Genera il QR Code dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+
 
         // Scorrimento immagini
         let currentIndex = 0;
@@ -520,7 +543,7 @@
 	</div>
 
 	<div class="qrcode-wrapper">
-        <h2>📷 Scansiona il QR Code per ritirare un ticket</h2>
+        <h3>📷 Scansiona il QR Code per ritirare un ticket</h3>
         <div class="qrcode-container">
             <div class="qrcode" id="qrcode"></div>
         </div>
