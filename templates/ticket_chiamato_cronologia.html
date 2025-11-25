@@ -55,14 +55,14 @@
         }
         /* Parte inferiore per immagini a scorrimento */
         .carousel-container {
-		 flex: 0 0 40%;
-	    width: 100%;
-	    height: 100%;
-	    overflow: hidden;
-	    position: relative;
-	    display: flex;
-	    align-items: center;
-	    justify-content: center;
+			flex: 0 0 40%;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 		}
 	
 		.carousel-images {
@@ -90,16 +90,9 @@
             padding: 20px;
             background-color: #000;
         }
-		.right-section h1 {
-			flex: 0 0 10%;
-			font-size: 32px;        /* prima era enorme, clamp → ora fisso e più basso */
-			margin: 5px 0 10px 0;   /* riduce lo spazio sopra e sotto */
-			padding: 0;             /* annulla padding (se impostato di default) */
-			line-height: 1.1;       /* compatta la riga */
-		}
-
+		
         .reparti-container {
-			flex: 0 0 50%;
+			flex: 0 0 60%;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
@@ -558,7 +551,6 @@
 </div>
 
 <div class="right-section">
-    <h1>🔔 Ticket Chiamati 🔔</h1>
     <div class="reparti-container">
         {% for reparto in reparti %}
         <div class="reparto-container">
