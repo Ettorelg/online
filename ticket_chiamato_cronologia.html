@@ -19,16 +19,12 @@
 
         /* Sezione sinistra (QR Code e immagini) ridotta al 40% */
         .left-section {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
             align-items: center;
-            width: 40%;
-            padding: 10px;
+            width: 30%;
             background-color: #222;
             border-right: 2px solid #ffcc00;
         }
-
+		
         /* Parte superiore per QR Code */
         .qrcode-wrapper {
             display: flex;
@@ -37,8 +33,7 @@
             align-items: center;
             width: 100%;
             flex-grow: 1; /* Occupa lo spazio disponibile fino alla metà della pagina */
-            max-height: 40%;
-			margin-bottom: 10px; /* Aggiunto spazio tra QR e carosello */
+            max-height: 30%;
         }
 
         .qrcode-container {
@@ -60,28 +55,30 @@
         }
         /* Parte inferiore per immagini a scorrimento */
         .carousel-container {
+		flex: 0 0 40%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	    width: 100%;
 	    height: 100%;
 	    overflow: hidden;
 	    position: relative;
-	    display: flex;
 	    align-items: center;
-	    justify-content: center;
-	}
+		}
 	
-	.carousel-images {
-	    display: flex;
-	    transition: transform 1s ease-in-out;
-	    width: 100%;
-	    height: 100%;
-	}
-	
-	.carousel-images img {
-	    width: 100%;
-	    height: 100%;
-	    object-fit: contain; /* Evita il ritaglio dell'immagine */
-	    border-radius: 10px;
-	}
+		.carousel-images {
+			display: flex;
+			transition: transform 1s ease-in-out;
+			width: 100%;
+			height: 100%;
+		}
+		
+		.carousel-images img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain; /* Evita il ritaglio dell'immagine */
+			border-radius: 10px;
+		}
 
 
         /* Sezione destra (Ticket Chiamati) aumentata al 60% */
@@ -90,11 +87,18 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            width: 60%;
-            padding: 20px;
+            width: 70%;
             background-color: #000;
+			color: white;
         }
+		.reparti-wrapper h1 {
+			font-size: 28px;
+			margin: 5px 0 15px 0;
+		}
+
+
         .reparti-container {
+			flex: 0 0 60%;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
@@ -157,10 +161,8 @@
 			width: 100%;
 			max-height: 50%;
 			overflow-y: hidden;
-			padding: 10px;
 			display: flex;
 			flex-direction: column;
-			gap: 10px;
 		}
 
 		.history-title {
@@ -242,22 +244,74 @@
 		.just-added {
 		  box-shadow: 0 0 0 2px #ffcc00 inset;
 		}
+		        .audio-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+
+        .audio-toggle {
+            background: none;
+            border: none;
+            color: #ffcc00;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .audio-toggle span {
+            font-size: 18px;
+        }
+
+        .audio-body {
+            margin-top: 8px;
+        }
+
+        .audio-body.hidden {
+            display: none;
+        }
+
+        .audio-mode-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .audio-icon {
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .audio-icon.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
 
 
     </style>
 <script>
-    var socket = io("wss://zestful-flow-pregettoonline.up.railway.app", {
-        transports: ["websocket"],
-        secure: true,
-        reconnection: true
-    });
+    var socket = io("wss://software.alphasystemsrl.it", {
+		transports: ["websocket"],
+		secure: true,
+		reconnection: true
+	});
+
 	function getUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get("user");
 }
 
     var selectedVoice = null;
-    var audio = new Audio("https://zestful-flow-pregettoonline.up.railway.app/static/ding.mp3");
+    var audio = new Audio("https://software.alphasystemsrl.it/static/ding.mp3");
 
     function getAudioPreference() {
         return localStorage.getItem("audioMode") || "synth"; 
@@ -267,6 +321,37 @@
         let mode = document.getElementById("audioMode").value;
         localStorage.setItem("audioMode", mode);
         console.log("🎵 Modalità audio salvata:", mode);
+    }
+	
+	function setAudioMode(mode) {
+        // salva in localStorage
+        localStorage.setItem("audioMode", mode);
+
+        // aggiorna select, se presente
+        const select = document.getElementById("audioMode");
+        if (select) select.value = mode;
+
+        // aggiorna icone
+        const synthIcon = document.getElementById("synthMode");
+        const fileIcon  = document.getElementById("fileMode");
+
+        if (synthIcon && fileIcon) {
+            if (mode === "synth") {
+                synthIcon.classList.add("active");
+                fileIcon.classList.remove("active");
+            } else {
+                fileIcon.classList.add("active");
+                synthIcon.classList.remove("active");
+            }
+        }
+
+        console.log("🔊 Modalità audio impostata:", mode);
+    }
+
+    function toggleAudioPanel() {
+        const panelBody = document.getElementById("audioPanelBody");
+        if (!panelBody) return;
+        panelBody.classList.toggle("hidden");
     }
 
     function loadVoices() {
@@ -314,76 +399,54 @@
         }
 		loadHistory(); // <— aggiungi questa riga alla fine
     });
-
-	// 👇 SOSTITUISCI la funzione
+// 👇 SOSTITUISCI la funzione
 	async function loadHistory(limit = 10) {
 	  try {
-		const userId = "{{ user_id }}";
 		const cacheBust = Date.now();
-		const res = await fetch(`/api/cronologia_utente?user=${encodeURIComponent(userId)}&limit=${limit}&_=${cacheBust}`);
+		const res = await fetch(`/api/cronologia_utente?limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
 
 		const ul = document.getElementById("historyList");
 		if (!ul) return;
 
 		ul.innerHTML = "";
-		// calcola ora in formato italiano (Europe/Rome) in modo robusto
-		let displayTime = "";
-		if (item.created_at) {
-		  const d = new Date(item.created_at); // ISO dal server
-		  if (!isNaN(d)) {
-			displayTime = new Intl.DateTimeFormat("it-IT", {
-			  hour: "2-digit",
-			  minute: "2-digit",
-			  timeZone: "Europe/Rome"
-			}).format(d);
+		data.slice(0, 10).forEach(item => {
+		  // Ora IT con +1h, robusta a ISO o "HH:MM"
+		  let displayTime = "";
+		  if (item.created_at) {
+			const d = new Date(item.created_at);
+			if (!isNaN(d)) {
+			  d.setHours(d.getHours() + 1); // +1 ora
+			  displayTime = new Intl.DateTimeFormat("it-IT", {
+				hour: "2-digit",
+				minute: "2-digit",
+				timeZone: "Europe/Rome"
+			  }).format(d);
+			}
 		  }
-		}
-		// fallback: se il server già manda "HH:MM", usalo senza parse
-		if (!displayTime) {
-		  displayTime = item.ora || "";
-		}
+		  if (!displayTime) {
+			if (item.ora && item.ora.includes(":")) {
+			  let [h, m] = item.ora.split(":");
+			  h = (parseInt(h, 10) + 1) % 24; // fallback +1h su stringa HH:MM
+			  displayTime = `${String(h).padStart(2, "0")}:${m}`;
+			} else {
+			  displayTime = ""; // fallback finale
+			}
+		  }
 
-		li.innerHTML = `
-		  <span class="history-number">${item.numero}</span>
-		  <span class="history-text">${item.reparto}</span>
-		  <span class="history-time">${displayTime}</span>
-		`;
-
-
+		  const li = document.createElement("li");
+		  li.className = "history-item";
+		  li.innerHTML = `
+			<span class="history-number">${item.numero}</span>
+			<span class="history-text">${item.reparto}</span>
+			<span class="history-time">${displayTime}</span>
+		  `;
 		  ul.appendChild(li);
 		});
 	  } catch (e) {
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
-
-	
-	// 👇 AGGIUNGI alla fine del tuo handler Socket
-	socket.on("update_tickets", function(numeri) {
-	  // ... tuo codice esistente che aggiorna i numeri ...
-		loadHistory(); // <-- aggiungi questa riga
-		function appendHistoryItem(listEl, item) {
-		  const li = document.createElement("li");
-		  li.className = "history-item fade-in just-added";
-		  li.innerHTML = `
-			<span class="history-time">${item.ora ?? ""}</span>
-			<span class="history-text">${item.reparto} ➜ Ticket ${item.numero}</span>
-		  `;
-
-		  // metti in cima
-		  listEl.prepend(li);
-
-		  // rimuovi il bordo evidenziato dopo un attimo
-		  setTimeout(() => li.classList.remove("just-added"), 600);
-
-		  // mantieni solo 10 elementi
-		  while (listEl.children.length > 10) {
-			listEl.removeChild(listEl.lastChild);
-		  }
-		}
-
-	});
 
 	// Avvio + (facoltativo) polling
 	document.addEventListener("DOMContentLoaded", function () {
@@ -427,6 +490,32 @@
     document.addEventListener("DOMContentLoaded", function () {
         let qrContainer = document.getElementById("qrcode");
 
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+
+            // 🔹 Ottieni l'ID dell'utente dal backend
+            let userId = "{{ user_id }}";
+
+            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code con l'ID dell'utente
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+
+            console.log("✅ QR Code generato con successo per user_id:", userId);
+        }
+
+        // 🔹 Genera il QR Code dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+
 
         // Scorrimento immagini
         let currentIndex = 0;
@@ -440,8 +529,12 @@
         setTimeout(loadVoices, 500);
 		const audioModeSelect = document.getElementById("audioMode");
         if (audioModeSelect) {
-            audioModeSelect.value = getAudioPreference();
+            const saved = getAudioPreference();
+            audioModeSelect.value = saved;
+            // sincronizza icone
+            setAudioMode(saved);
         }
+
     });
 	
 </script>
@@ -454,15 +547,13 @@
 		<ul class="history-list" id="historyList"></ul>
 	</div>
 
-
-    <!-- Immagini a scorrimento in basso -->
-    <div class="carousel-container">
-        <div class="carousel-images">
-            {% for immagine in immagini %}
-            <img src="{{ immagine }}" alt="Immagine" />
-            {% endfor %}
+	<div class="qrcode-wrapper">
+        <h3>📷 Scansiona il QR Code per ritirare un ticket</h3>
+        <div class="qrcode-container">
+            <div class="qrcode" id="qrcode"></div>
         </div>
     </div>
+
 </div>
 
 <div class="right-section">
@@ -477,6 +568,14 @@
         </div>
         {% endfor %}
     </div>
+    <!-- Immagini a scorrimento in basso -->
+    <div class="carousel-container">
+        <div class="carousel-images">
+            {% for immagine in immagini %}
+            <img src="{{ immagine }}" alt="Immagine" />
+            {% endfor %}
+        </div>
+    </div>
 <div style="position: absolute;
             bottom: 20px;
             right: 20px;
@@ -487,15 +586,12 @@
     <div class="audio-mode-container" style="display: flex; gap: 10px; align-items: center; justify-content: center;">
         <span id="synthMode" class="audio-icon active" onclick="setAudioMode('synth')" style="font-size: 24px; cursor: pointer; opacity: 1; transition: transform 0.2s, opacity 0.2s;">🔊</span>
         <span id="fileMode" class="audio-icon" onclick="setAudioMode('file')" style="font-size: 24px; cursor: pointer; opacity: 0.5; transition: transform 0.2s, opacity 0.2s;">🎵</span>
-    <label for="audioMode" style="display: block; font-size: 14px;">Modalità Audio:</label>
-    <select id="audioMode" onchange="saveAudioPreference()" style="font-size: 14px; padding: 5px; border-radius: 5px;">
-        <option value="synth">🔊 Sintesi Vocale</option>
-        <option value="file">🎵 File Audio</option>
-    </select>
+
 	</div>
 	 
 	
 </div>
+
 
 
 
