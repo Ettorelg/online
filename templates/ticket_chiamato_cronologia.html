@@ -68,16 +68,14 @@
 		.carousel-images {
 			display: flex;
 			transition: transform 1s ease-in-out;
-			width: 100%;
 			height: 100%;
 		}
-		
+
 		.carousel-images img {
-			width: 100%;
-			height: 100%;
-			object-fit: contain; /* Evita il ritaglio dell'immagine */
-			border-radius: 10px;
+			width: 100%;      /* ogni immagine occupa tutta la slide */
+			flex-shrink: 0;   /* impedisce il restringimento */
 		}
+
 
 
         /* Sezione destra (Ticket Chiamati) aumentata al 60% */
@@ -513,11 +511,15 @@
 
         // Scorrimento immagini
         let currentIndex = 0;
-        const images = document.querySelector(".carousel-images");
-        setInterval(() => {
-            currentIndex = (currentIndex + 1) % images.children.length;
-            images.style.transform = `translateX(-${currentIndex * 100}%)`;
-        }, 3000);
+		const carousel = document.querySelector(".carousel-images");
+		const items = carousel.children;
+		const total = items.length;
+
+		setInterval(() => {
+			currentIndex = (currentIndex + 1) % total;
+			carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
+		}, 3000);
+
 
         window.speechSynthesis.onvoiceschanged = loadVoices;
         setTimeout(loadVoices, 500);
