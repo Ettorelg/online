@@ -1146,30 +1146,51 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
     print(f"❌ Errore definitivo: impossibile connettersi alla stampante {ip_stampante} dopo {tentativi} tentativi.")
     return False  # Se dopo tutti i tentativi non riesce, restituisce errore
 
+from flask import request
+
 @app.route("/ticket_chiamato_cronologia")
 def ticket_chiamato_cronologia():
-    # Legge l'utente dal parametro ?user=ID
-    user_id = request.args.get("user", default=None, type=int)
-    
+    user_id = request.args.get("user", type=int)
     if not user_id:
-        return "Errore: devi specificare ?user=ID", 400
+        return "Utente non specificato", 400
 
-    # Qui recuperi i dati dei ticket chiamati per quell'utente
-    # Sostituisci con la tua funzione reale
-    cronologia = get_cronologia(user_id)
-    reparti = get_reparti()
-    numeri_chiamati = get_numeri_chiamati(user_id)
-    immagini = get_immagini()
+    db = Database()
+
+    # Solo ticket dei reparti dell'utente
+    numeri_chiamati = db.execute_query("""
+        SELECT tr.id_reparto, tr.numero_attuale
+        FROM ticket_reparto tr
+        JOIN reparti r  ON tr.id_reparto = r.id
+        JOIN licenze l  ON r.id_licenza = l.id
+        WHERE l.id_utente = %s
+    """, (user_id,))
+    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
+
+    reparti = db.execute_query("""
+        SELECT DISTINCT r.id, r.nome
+        FROM reparti r
+        JOIN licenze l ON r.id_licenza = l.id
+        WHERE l.id_utente = %s
+        ORDER BY r.nome
+    """, (user_id,))
+
+    immagini = db.execute_query("""
+        SELECT immagine_url
+        FROM immagini_utenti
+        WHERE id_utente = %s
+    """, (user_id,))
+    immagini_list = [row[0] for row in immagini] if immagini else []
+
+    db.close()
 
     return render_template(
         "ticket_chiamato_cronologia.html",
         user_id=user_id,
-        cronologia=cronologia,
         reparti=reparti,
-        numeri_chiamati=numeri_chiamati,
-        immagini=immagini
+        numeri_chiamati=numeri_chiamati_dict,
+        immagini=immagini_list
     )
-    
+
 @app.route("/api/cronologia_utente")
 def api_cronologia_utente():
     # ✅ SOLO utente loggato, niente parametro ?user=
