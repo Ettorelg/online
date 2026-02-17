@@ -1148,10 +1148,6 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
 
 @app.route("/ticket_chiamato_cronologia")
 def ticket_chiamato_cronologia():
-    if "user_id" not in session:
-        return redirect("/login")
-
-    user_id = session["user_id"]
     db = Database()
 
     numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
@@ -1264,3 +1260,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     # eventlet è consigliato con Flask-SocketIO
     socketio.run(app, host="0.0.0.0", port=port)
+
