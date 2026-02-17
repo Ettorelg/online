@@ -1148,34 +1148,28 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
 
 @app.route("/ticket_chiamato_cronologia")
 def ticket_chiamato_cronologia():
-    if "user_id" not in session:
-        return redirect("/login")
+    # Legge l'utente dal parametro ?user=ID
+    user_id = request.args.get("user", default=None, type=int)
+    
+    if not user_id:
+        return "Errore: devi specificare ?user=ID", 400
 
-    user_id = session["user_id"]
-    db = Database()
+    # Qui recuperi i dati dei ticket chiamati per quell'utente
+    # Sostituisci con la tua funzione reale
+    cronologia = get_cronologia(user_id)
+    reparti = get_reparti()
+    numeri_chiamati = get_numeri_chiamati(user_id)
+    immagini = get_immagini()
 
-    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
-    numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
-
-    reparti = db.execute_query("""
-        SELECT DISTINCT r.id, r.nome
-        FROM reparti r
-        INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = %s
-    """, (user_id,))
-
-    immagini = db.execute_query("SELECT immagine_url FROM immagini_utenti WHERE id_utente = %s", (user_id,))
-    immagini_list = [row[0] for row in immagini] if immagini else []
-
-    db.close()
     return render_template(
         "ticket_chiamato_cronologia.html",
         user_id=user_id,
+        cronologia=cronologia,
         reparti=reparti,
-        numeri_chiamati=numeri_chiamati_dict,
-        immagini=immagini_list
+        numeri_chiamati=numeri_chiamati,
+        immagini=immagini
     )
-        
+    
 @app.route("/api/cronologia_utente")
 def api_cronologia_utente():
     # ✅ SOLO utente loggato, niente parametro ?user=
