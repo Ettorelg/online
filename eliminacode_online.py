@@ -4,7 +4,7 @@ from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
 from escpos.printer import Network
- 
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
 
@@ -1146,22 +1146,15 @@ def stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante, tentativi=3
     print(f"❌ Errore definitivo: impossibile connettersi alla stampante {ip_stampante} dopo {tentativi} tentativi.")
     return False  # Se dopo tutti i tentativi non riesce, restituisce errore
 
-from flask import request
-
 @app.route("/ticket_chiamato_cronologia")
 def ticket_chiamato_cronologia():
-    user_id = request.args.get("user")
-    if not user_id:
-        return "Utente non specificato", 400
+    if "user_id" not in session:
+        return redirect("/login")
 
+    user_id = session["user_id"]
     db = Database()
-    numeri_chiamati = db.execute_query("""
-        SELECT tr.id_reparto, tr.numero_attuale
-        FROM ticket_reparto tr
-        INNER JOIN reparti r ON tr.id_reparto = r.id
-        INNER JOIN licenze l ON r.id_licenza = l.id
-        WHERE l.id_utente = %s
-    """, (user_id,))
+
+    numeri_chiamati = db.execute_query("SELECT id_reparto, numero_attuale FROM ticket_reparto")
     numeri_chiamati_dict = {row[0]: row[1] for row in numeri_chiamati} if numeri_chiamati else {}
 
     reparti = db.execute_query("""
@@ -1177,12 +1170,12 @@ def ticket_chiamato_cronologia():
     db.close()
     return render_template(
         "ticket_chiamato_cronologia.html",
+        user_id=user_id,
         reparti=reparti,
         numeri_chiamati=numeri_chiamati_dict,
-        immagini=immagini_list,
-        user_id=user_id
+        immagini=immagini_list
     )
-
+        
 @app.route("/api/cronologia_utente")
 def api_cronologia_utente():
     # ✅ SOLO utente loggato, niente parametro ?user=
@@ -1271,5 +1264,3 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     # eventlet è consigliato con Flask-SocketIO
     socketio.run(app, host="0.0.0.0", port=port)
-
-
