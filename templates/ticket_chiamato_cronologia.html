@@ -1,159 +1,548 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ticket Chiamato</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<style>
-/* --- STILI --- */
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #000;
-    color: white;
-    display: flex;
-    height: 100vh;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Chiamato</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: white;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sezione sinistra (QR Code e immagini) ridotta al 40% */
+        .left-section {
+            align-items: center;
+            width: 30%;
+            background-color: #222;
+            border-right: 2px solid #ffcc00;
+        }
+
+        /* Parte superiore per QR Code */
+        .qrcode-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            flex-grow: 1; /* Occupa lo spazio disponibile fino alla metà della pagina */
+            max-height: 30%;
+        }
+
+        .qrcode-container {
+            flex-grow: 1; /* Il QR code occupa tutto lo spazio rimanente */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 50%;
+            max-width: 350px; /* Limite massimo per evitare distorsioni */
+            aspect-ratio: 1 / 1;
+        }
+
+        .qrcode {
+            width: 100%;
+            height: 100%;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        /* Parte inferiore per immagini a scorrimento */
+        .carousel-container {
+			flex: 0 0 40%;
+			width: 100%;
+			height: 100%;
+			overflow: hidden;
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+	
+		.carousel-images {
+			display: flex;
+			transition: transform 1s ease-in-out;
+			height: 100%;
+		}
+
+		.carousel-images img {
+			width: 100%;      /* ogni immagine occupa tutta la slide */
+			flex-shrink: 0;   /* impedisce il restringimento */
+		}
+
+
+
+        /* Sezione destra (Ticket Chiamati) aumentata al 60% */
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 70%;
+            padding: 20px;
+            background-color: #000;
+        }
+		
+        .reparti-container {
+			flex: 0 0 60%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+        }
+
+        .reparto-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .reparto-nome {
+            font-size: clamp(18px, 3vw, 30px);
+            font-weight: bold;
+            color: #ffcc00;
+            text-transform: uppercase;
+        }
+
+        .ticket-number {
+            font-size: clamp(50px, 8vw, 120px);
+            font-weight: bold;
+            padding: 20px;
+            background-color: #ffcc00;
+            color: black;
+            border-radius: 10px;
+            display: inline-block;
+            min-width: 150px;
+            text-align: center;
+            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
+        }
+
+        .highlight {
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                background-color: #ffcc00;
+            }
+            to {
+                transform: scale(1.2);
+                background-color: #ff3300;
+            }
+        }
+
+        .voice-test {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+		.history-wrapper {
+			width: 100%;
+			overflow-y: hidden;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.history-title {
+			font-size: 22px;
+			text-align: center;
+			color: #ffcc00;
+		}
+
+		.history-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		.history-item {
+			background: rgba(255, 255, 255, 0.1);
+			padding: 4px 8px; /* ridotto da 10px */
+			border-radius: 6px; /* più stretto */
+			display: flex;
+			flex-direction: row;
+			justify-content: space-between;
+			align-items: center;
+			gap: 4px;
+			font-weight: bold;
+			margin-bottom: 3px; /* aggiunto per ridurre spazio verticale */
+			transition: transform 0.3s ease-in-out, background 0.2s ease-in-out;
+		}
+
+		.history-time {
+			font-size: 14px;
+			opacity: 0.7;
+			min-width: 50px;
+			text-align: right;
+		}
+
+		.history-text {
+			font-size: 20px;
+			color: #ffcc00;
+			text-transform: uppercase;
+			flex: 1;
+			text-align: left;
+			white-space: nowrap;       /* evita che vada a capo */
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.history-number {
+			font-size: 24px;
+			background: #ffcc00;
+			color: black;
+			padding: 4px 10px; /* ridotto */
+			border-radius: 6px;
+			min-width: 42px;
+			text-align: center;
+		}
+
+		.history-item:hover {
+			transform: scale(1.02);
+			background: rgba(255, 255, 255, 0.16);
+		}
+
+		/* Animazione ingresso elemento cronologia */
+		.fade-in {
+		  animation: fadeInUp 350ms ease-out;
+		}
+
+		@keyframes fadeInUp {
+		  from {
+			opacity: 0;
+			transform: translateY(12px);
+		  }
+		  to {
+			opacity: 1;
+			transform: translateY(0);
+		  }
+		}
+
+		/* (opzionale) leggero highlight appena inserito */
+		.just-added {
+		  box-shadow: 0 0 0 2px #ffcc00 inset;
+		}
+		        .audio-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+
+        .audio-toggle {
+            background: none;
+            border: none;
+            color: #ffcc00;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .audio-toggle span {
+            font-size: 18px;
+        }
+
+        .audio-body {
+            margin-top: 8px;
+        }
+
+        .audio-body.hidden {
+            display: none;
+        }
+
+        .audio-mode-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .audio-icon {
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .audio-icon.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+
+    </style>
+<script>
+    var socket = io("wss://software.alphasystemsrl.it", {
+		transports: ["websocket"],
+		secure: true,
+		reconnection: true
+	});
+
+	function getUserIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("user");
 }
 
-/* Colonna sinistra QR + carousel */
-.left-section {
-    display: flex;
-    flex-direction: column;
-    width: 30%;
-    background-color: #222;
-    border-right: 2px solid #ffcc00;
-    overflow: hidden;
-}
+    var selectedVoice = null;
+    var audio = new Audio("https://software.alphasystemsrl.it/static/ding.mp3");
 
-.qrcode-wrapper {
-    flex: 0 0 30%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-}
+    function getAudioPreference() {
+        return localStorage.getItem("audioMode") || "synth"; 
+    }
 
-.qrcode-container { width: 80%; height: auto; }
+    function saveAudioPreference() {
+        let mode = document.getElementById("audioMode").value;
+        localStorage.setItem("audioMode", mode);
+        console.log("🎵 Modalità audio salvata:", mode);
+    }
+	
+	function setAudioMode(mode) {
+        // salva in localStorage
+        localStorage.setItem("audioMode", mode);
 
-.carousel-container {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-}
+        // aggiorna select, se presente
+        const select = document.getElementById("audioMode");
+        if (select) select.value = mode;
 
-.carousel-images {
-    display: flex;
-    transition: transform 1s ease-in-out;
-    height: 100%;
-}
+        // aggiorna icone
+        const synthIcon = document.getElementById("synthMode");
+        const fileIcon  = document.getElementById("fileMode");
 
-.carousel-images img {
-    width: 100%;
-    flex-shrink: 0;
-}
+        if (synthIcon && fileIcon) {
+            if (mode === "synth") {
+                synthIcon.classList.add("active");
+                fileIcon.classList.remove("active");
+            } else {
+                fileIcon.classList.add("active");
+                synthIcon.classList.remove("active");
+            }
+        }
 
-/* Cronologia */
-.history-wrapper {
-    flex: 0 0 40%;
-    overflow-y: auto;
-    padding: 10px;
-}
+        console.log("🔊 Modalità audio impostata:", mode);
+    }
 
-.history-title { font-size: 22px; text-align: center; color: #ffcc00; margin-bottom: 6px; }
+    function toggleAudioPanel() {
+        const panelBody = document.getElementById("audioPanelBody");
+        if (!panelBody) return;
+        panelBody.classList.toggle("hidden");
+    }
 
-.history-list { list-style: none; padding: 0; margin: 0; }
+    function loadVoices() {
+        var voices = window.speechSynthesis.getVoices();
+        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                        voices.find(v => v.name.includes("Google italiano femminile")) ||
+                        voices.find(v => v.name.includes("Alice")) ||
+                        voices.find(v => v.name.toLowerCase().includes("female")) ||
+                        voices.find(v => v.lang === "it-IT");
 
-.history-item {
-    background: rgba(255,255,255,0.1);
-    padding: 4px 8px;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 4px;
-    font-weight: bold;
-    margin-bottom: 3px;
-    transition: transform 0.3s ease-in-out, background 0.2s ease-in-out;
-}
+        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+    }
 
-.history-number { font-size: 24px; background: #ffcc00; color: black; padding: 4px 10px; border-radius: 6px; min-width: 42px; text-align: center; }
-.history-text { flex:1; font-size: 20px; color: #ffcc00; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.history-time { font-size: 14px; opacity: 0.7; min-width: 50px; text-align: right; }
+    function announceNumber(number, reparto) {
+        let mode = getAudioPreference();
 
-.history-item:hover { transform: scale(1.02); background: rgba(255,255,255,0.16); }
+        if (mode === "synth" && 'speechSynthesis' in window) {
+            var msg = new SpeechSynthesisUtterance(reparto+ " " + number);
+            msg.voice = selectedVoice;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
 
-.fade-in { animation: fadeInUp 350ms ease-out; }
-@keyframes fadeInUp { from {opacity:0; transform:translateY(12px);} to {opacity:1; transform:translateY(0);} }
+    function highlightNumber(element) {
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 5000);
+    }
 
-/* Colonna destra ticket */
-.right-section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    width: 70%;
-    padding: 20px;
-    background-color: #000;
-}
+    socket.on("update_tickets", function(numeri) {
+        for (var reparto in numeri) {
+            var ticketElement = document.getElementById("ticket-" + reparto);
+            if (ticketElement) {
+                var oldNumber = ticketElement.innerText;
+                ticketElement.innerText = numeri[reparto];
 
-.reparti-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    width: 100%;
-    max-width: 900px;
-}
+                if (oldNumber != numeri[reparto]) {
+                    highlightNumber(ticketElement);
+                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                }
+            }
+        }
+		loadHistory(); // <— aggiungi questa riga alla fine
+    });
+// 👇 SOSTITUISCI la funzione
+	async function loadHistory(limit = 10) {
+	  try {
+		const cacheBust = Date.now();
+		const res = await fetch(`/api/cronologia_utente?limit=${limit}&_=${cacheBust}`);
+		const data = await res.json();
 
-.reparto-container {
-    background: rgba(255,255,255,0.1);
-    padding: 20px;
-    border-radius: 10px;
-    text-align: center;
-}
+		const ul = document.getElementById("historyList");
+		if (!ul) return;
 
-.reparto-nome {
-    font-size: clamp(18px, 3vw, 30px);
-    font-weight: bold;
-    color: #ffcc00;
-    text-transform: uppercase;
-}
+		ul.innerHTML = "";
+		data.slice(0, 10).forEach(item => {
+		  // Ora IT con +1h, robusta a ISO o "HH:MM"
+		  let displayTime = "";
+		  if (item.created_at) {
+			const d = new Date(item.created_at);
+			if (!isNaN(d)) {
+			  d.setHours(d.getHours() + 1); // +1 ora
+			  displayTime = new Intl.DateTimeFormat("it-IT", {
+				hour: "2-digit",
+				minute: "2-digit",
+				timeZone: "Europe/Rome"
+			  }).format(d);
+			}
+		  }
+		  if (!displayTime) {
+			if (item.ora && item.ora.includes(":")) {
+			  let [h, m] = item.ora.split(":");
+			  h = (parseInt(h, 10) + 1) % 24; // fallback +1h su stringa HH:MM
+			  displayTime = `${String(h).padStart(2, "0")}:${m}`;
+			} else {
+			  displayTime = ""; // fallback finale
+			}
+		  }
 
-.ticket-number {
-    font-size: clamp(50px, 8vw, 120px);
-    font-weight: bold;
-    padding: 20px;
-    background-color: #ffcc00;
-    color: black;
-    border-radius: 10px;
-    display: inline-block;
-    min-width: 150px;
-    text-align: center;
-    transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
-}
+		  const li = document.createElement("li");
+		  li.className = "history-item";
+		  li.innerHTML = `
+			<span class="history-number">${item.numero}</span>
+			<span class="history-text">${item.reparto}</span>
+			<span class="history-time">${displayTime}</span>
+		  `;
+		  ul.appendChild(li);
+		});
+	  } catch (e) {
+		console.error("Errore fetch cronologia:", e);
+	  }
+	}
 
-.highlight { animation: pulse 1s infinite alternate; }
-@keyframes pulse { from {transform:scale(1); background-color:#ffcc00;} to {transform:scale(1.2); background-color:#ff3300;} }
-</style>
+	// Avvio + (facoltativo) polling
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000); // opzionale
+	});
+
+
+	// aggiorna la cronologia quando arrivano nuove chiamate
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	// avvio + polling leggero
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000);
+	});
+
+
+	// Aggiorna cronologia quando cambia un ticket
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	setInterval(loadHistory, 15000); // refresh ogni 15s
+	document.addEventListener("DOMContentLoaded", loadHistory);
+
+
+
+
+    function testVoice() {
+        let mode = getAudioPreference();
+        if (mode === "synth") {
+            var msg = new SpeechSynthesisUtterance("Audio attivato");
+            msg.voice = selectedVoice;
+            msg.rate = 0.6;
+            msg.pitch = 1.2;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let qrContainer = document.getElementById("qrcode");
+
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+
+            // 🔹 Ottieni l'ID dell'utente dal backend
+            let userId = "{{ user_id }}";
+
+            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code con l'ID dell'utente
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+
+            console.log("✅ QR Code generato con successo per user_id:", userId);
+        }
+
+        // 🔹 Genera il QR Code dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+
+
+        // Scorrimento immagini
+        let currentIndex = 0;
+		const carousel = document.querySelector(".carousel-images");
+		const items = carousel.children;
+		const total = items.length;
+
+		setInterval(() => {
+			currentIndex = (currentIndex + 1) % total;
+			carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
+		}, 3000);
+
+
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        setTimeout(loadVoices, 500);
+		const audioModeSelect = document.getElementById("audioMode");
+        if (audioModeSelect) {
+            const saved = getAudioPreference();
+            audioModeSelect.value = saved;
+            // sincronizza icone
+            setAudioMode(saved);
+        }
+
+    });
+	
+</script>
+
 </head>
 <body>
 <div class="left-section">
-    <div class="qrcode-wrapper">
-        <div id="qrcode" class="qrcode-container"></div>
+	<div class="history-wrapper">
+		<h2 class="history-title">🕘 Cronologia Ticket</h2>
+		<ul class="history-list" id="historyList"></ul>
+	
     </div>
-    <div class="carousel-container">
-        <div class="carousel-images">
-            {% for immagine in immagini %}
-            <img src="{{ immagine }}" alt="Immagine" />
-            {% endfor %}
-        </div>
-    </div>
-    <div class="history-wrapper">
-        <h2 class="history-title">🕘 Cronologia Ticket</h2>
-        <ul class="history-list" id="historyList"></ul>
-    </div>
+
 </div>
 
 <div class="right-section">
@@ -167,99 +556,35 @@ body {
         </div>
         {% endfor %}
     </div>
+    <!-- Immagini a scorrimento in basso -->
+    <div class="carousel-container">
+        <div class="carousel-images">
+            {% for immagine in immagini %}
+            <img src="{{ immagine }}" alt="Immagine" />
+            {% endfor %}
+        </div>
+    </div>
+<div style="position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer; text-align: center;">
+
+    <div class="audio-mode-container" style="display: flex; gap: 10px; align-items: center; justify-content: center;">
+        <span id="synthMode" class="audio-icon active" onclick="setAudioMode('synth')" style="font-size: 24px; cursor: pointer; opacity: 1; transition: transform 0.2s, opacity 0.2s;">🔊</span>
+        <span id="fileMode" class="audio-icon" onclick="setAudioMode('file')" style="font-size: 24px; cursor: pointer; opacity: 0.5; transition: transform 0.2s, opacity 0.2s;">🎵</span>
+
+	</div>
+	 
+	
 </div>
 
-<script>
-// --- SOCKET.IO + QR ---
-const socket = io("wss://software.alphasystemsrl.it", {transports:["websocket"],secure:true,reconnection:true});
-let selectedVoice = null;
-const audio = new Audio("https://software.alphasystemsrl.it/static/ding.mp3");
 
-function loadVoices() {
-    const voices = window.speechSynthesis.getVoices();
-    selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-                    voices.find(v => v.name.includes("Google italiano femminile")) ||
-                    voices.find(v => v.name.includes("Alice")) ||
-                    voices.find(v => v.lang === "it-IT");
-}
 
-function announceNumber(number, reparto) {
-    const mode = localStorage.getItem("audioMode") || "synth";
-    if (mode==="synth" && 'speechSynthesis' in window) {
-        const msg = new SpeechSynthesisUtterance(reparto + " " + number);
-        msg.voice = selectedVoice;
-        msg.rate = 0.7;
-        msg.pitch = 1.0;
-        window.speechSynthesis.speak(msg);
-    } else audio.play().catch(console.log);
-}
 
-function highlightNumber(el) {
-    el.classList.add("highlight");
-    setTimeout(() => el.classList.remove("highlight"),5000);
-}
 
-// Aggiorna tickets e cronologia
-socket.on("update_tickets", numeri => {
-    for (const reparto in numeri) {
-        const el = document.getElementById("ticket-" + reparto);
-        if (!el) continue;
-        const oldNumber = el.innerText;
-        el.innerText = numeri[reparto];
-        if(oldNumber != numeri[reparto]) {
-            highlightNumber(el);
-            announceNumber(numeri[reparto], el.dataset.reparto);
-        }
-    }
-    loadHistory();
-});
+</div>
 
-// --- CRONOLOGIA ---
-async function loadHistory(limit=10){
-    try{
-        const res = await fetch(`/api/cronologia_utente?limit=${limit}&_=${Date.now()}`);
-        const data = await res.json();
-        const ul = document.getElementById("historyList");
-        ul.innerHTML="";
-        data.slice(0,limit).forEach(item=>{
-            let displayTime="";
-            if(item.created_at){
-                const d=new Date(item.created_at);
-                if(!isNaN(d)){ d.setHours(d.getHours()+1); displayTime = d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); }
-            }
-            const li = document.createElement("li");
-            li.className="history-item";
-            li.innerHTML=`<span class="history-number">${item.numero}</span>
-                          <span class="history-text">${item.reparto}</span>
-                          <span class="history-time">${displayTime}</span>`;
-            ul.appendChild(li);
-        });
-    } catch(e){ console.error("Errore fetch cronologia:", e); }
-}
-
-// --- QR CODE ---
-function generateQRCode(){
-    const qrContainer = document.getElementById("qrcode");
-    qrContainer.innerHTML="";
-    const size = qrContainer.offsetWidth;
-    const userId = "{{ user_id }}";
-    if(!userId) return console.error("user_id non definito");
-    new QRCode(qrContainer, {text:window.location.origin+"/ritira_ticket_qr?user="+userId,width:size,height:size});
-}
-
-// --- CAROUSEL ---
-let currentIndex=0;
-const carousel = document.querySelector(".carousel-images");
-if(carousel) setInterval(()=>{ currentIndex=(currentIndex+1)%carousel.children.length; carousel.style.transform=`translateX(-${currentIndex*100}%)`; },3000);
-
-// --- INIT ---
-document.addEventListener("DOMContentLoaded", ()=>{
-    generateQRCode();
-    loadVoices();
-    loadHistory(50);
-    setInterval(()=>loadHistory(50),15000);
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-});
-</script>
 </body>
 </html>
