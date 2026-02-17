@@ -394,7 +394,11 @@
 	async function loadHistory(limit = 10) {
 	  try {
 		const cacheBust = Date.now();
-		const res = await fetch(`/api/cronologia_utente?limit=${limit}&_=${cacheBust}`);
+		const user = new URLSearchParams(window.location.search).get("user");
+		const res = await fetch(`/api/cronologia_utente?user=${user}&limit=${limit}&_=${cacheBust}`);
+
+		socket.emit("join", { room: "user_" + user });
+
 		const data = await res.json();
 
 		const ul = document.getElementById("historyList");
