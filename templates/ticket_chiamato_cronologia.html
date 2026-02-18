@@ -90,37 +90,49 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 			.carousel-container{
 			  width:100%;
 			  max-width:1100px;
-
 			  flex:1;
 			  min-height:0;
+
+			  position:relative;
+			  overflow:hidden;
 
 			  display:flex;
 			  align-items:center;
 			  justify-content:center;
 
-			  overflow:hidden;
 			  background:#000;
 			  border-radius: var(--radius);
 			}
 
 			.carousel-images{
-			  display:flex;
+			  position:relative;
 			  width:100%;
 			  height:100%;
 			}
 
+			/* tutte le immagini sovrapposte */
 			.carousel-images img{
+			  position:absolute;
+			  inset:0;
+			  margin:auto;
+
 			  max-width:100%;
 			  max-height:100%;
-
 			  width:auto;
 			  height:auto;
 
 			  object-fit: contain;
 			  object-position:center;
 
-			  flex-shrink:0;
+			  opacity:0;
+			  transition: opacity 700ms ease-in-out;
 			}
+
+			/* solo quella attiva si vede */
+			.carousel-images img.active{
+			  opacity:1;
+			}
+
 
 
 
@@ -564,14 +576,22 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 
         // Scorrimento immagini
         let currentIndex = 0;
+		// Fade immagini: una alla volta
 		const carousel = document.querySelector(".carousel-images");
-		const items = carousel.children;
-		const total = items.length;
+		const slides = Array.from(carousel.querySelectorAll("img"));
+		let currentIndex = 0;
 
-		setInterval(() => {
-			currentIndex = (currentIndex + 1) % total;
-			carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
-		}, 3000);
+		function showSlide(i){
+		  slides.forEach((img, idx) => img.classList.toggle("active", idx === i));
+		}
+
+		if (slides.length > 0) {
+		  showSlide(0);
+		  setInterval(() => {
+			currentIndex = (currentIndex + 1) % slides.length;
+			showSlide(currentIndex);
+		  }, 3000);
+		}
 
 
         window.speechSynthesis.onvoiceschanged = loadVoices;
