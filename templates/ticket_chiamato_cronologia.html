@@ -360,7 +360,7 @@
         let mode = getAudioPreference();
 
         if (mode === "synth" && 'speechSynthesis' in window) {
-            var msg = new SpeechSynthesisUtterance(reparto+ " " + number);
+            var msg = new SpeechSynthesisUtterance("Serviamo il " +reparto+ " " + number);
             msg.voice = selectedVoice;
             msg.rate = 0.7;
             msg.pitch = 1.0;
@@ -372,7 +372,7 @@
 
     function highlightNumber(element) {
         element.classList.add("highlight");
-        setTimeout(() => element.classList.remove("highlight"), 5000);
+        setTimeout(() => element.classList.remove("highlight"), 15000);
     }
 
     socket.on("update_tickets", function(numeri) {
