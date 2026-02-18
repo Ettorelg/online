@@ -99,12 +99,16 @@
             max-width: 900px;
         }
 
-        .reparto-container {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2%;
-            border-radius: 10px;
-            text-align: center;
-        }
+
+		.reparto-container {
+		  background: rgba(255, 255, 255, 0.1);
+		  padding: 16px 20px;      /* spazio fisso controllato */
+		  border-radius: 14px;
+		  text-align: center;
+		  display: inline-flex;    /* si adatta al contenuto */
+		  flex-direction: column;
+		  align-items: center;
+		}
 
         .reparto-nome {
             font-size: clamp(18px, 3vw, 30px);
