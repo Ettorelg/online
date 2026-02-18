@@ -170,6 +170,17 @@
 			
 		}
 
+		.ticket-number-input{
+		  text-align: center;
+		  outline: none;
+		  border: 2px solid #ccc;
+		  background-color: #f2f2f2;
+		}
+
+		.ticket-number-input:focus{
+		  border-color: #007bff;
+		  box-shadow: 0 0 0 3px rgba(0,123,255,.15);
+		}
 
     </style>
     <script>
@@ -211,6 +222,57 @@
             let button = document.getElementById("toggle-btn-" + repartoId);
             button.textContent = reparto.classList.contains("collapsed") ? "➕" : "➖";
         }
+		function ticketNumberKey(e, repartoId){
+		  if (e.key === "Enter") {
+			e.preventDefault();
+			setNumberFromTicket(repartoId);
+			e.target.blur();
+		  } else if (e.key === "Escape") {
+			// ripristina il valore attuale mostrato e esci
+			e.target.value = e.target.getAttribute("data-last") || e.target.value;
+			e.target.blur();
+		  }
+		}
+
+		function ticketNumberBlur(repartoId){
+		  setNumberFromTicket(repartoId);
+		}
+
+		function setNumberFromTicket(repartoId){
+		  const el = document.getElementById("ticket-" + repartoId);
+		  if (!el) return;
+
+		  const nuovoNumero = el.value;
+
+		  // evita chiamate inutili
+		  if (el.getAttribute("data-last") === nuovoNumero) return;
+
+		  // riuso la tua logica, ma leggendo dal ticket-number
+		  if (nuovoNumero === "" || isNaN(nuovoNumero) || parseInt(nuovoNumero) < 0) {
+			alert("Inserisci un numero valido!");
+			// ripristina
+			el.value = el.getAttribute("data-last") || 0;
+			return;
+		  }
+
+		  fetch("/gestione_ticket", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: `reparto=${repartoId}&azione=imposta&nuovo_numero=${encodeURIComponent(nuovoNumero)}`
+		  }).then(r => r.json())
+			.then(data => {
+			  if (data.success) {
+				el.value = nuovoNumero;
+				el.setAttribute("data-last", nuovoNumero);
+			  } else {
+				alert("Errore nell'impostazione del numero.");
+				el.value = el.getAttribute("data-last") || 0;
+			  }
+			}).catch(() => {
+			  el.value = el.getAttribute("data-last") || 0;
+			});
+		}
+
     </script>
 </head>
 <body>
@@ -229,9 +291,16 @@
 					◀
 				</button>
 
-				<div class="ticket-number" id="ticket-{{ reparto[0] }}">
-					{{ numeri_ticket[reparto[0]] if reparto[0] in numeri_ticket else 0 }}
-				</div>
+				<input
+				  type="number"
+				  min="0"
+				  class="ticket-number ticket-number-input"
+				  id="ticket-{{ reparto[0] }}"
+				  value="{{ numeri_ticket[reparto[0]] if reparto[0] in numeri_ticket else 0 }}"
+				  onkeydown="ticketNumberKey(event, '{{ reparto[0] }}')"
+				  onblur="ticketNumberBlur('{{ reparto[0] }}')"
+				/>
+
 
 				<button type="submit" name="azione" value="avanti" class="btn-avanti btn-side">
 					▶
