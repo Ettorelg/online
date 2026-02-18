@@ -1193,10 +1193,9 @@ def ticket_chiamato_cronologia():
 
 @app.route("/api/cronologia_utente")
 def api_cronologia_utente():
-    # ✅ SOLO utente loggato, niente parametro ?user=
-    user_id = session.get("user_id")
+    user_id = request.args.get("user", type=int)
     if not user_id:
-        return jsonify([]), 401  # non loggato
+        return "Utente non specificato", 400
 
     limit = request.args.get("limit", default=50, type=int)
 
