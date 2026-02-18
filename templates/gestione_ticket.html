@@ -121,6 +121,35 @@
             overflow: hidden;
             padding-bottom: 5px;
         }
+		.ticket-controls{
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			gap:20px;
+			margin-top:10px;
+		}
+
+		.btn-side{
+			width:60px;
+			height:60px;
+			font-size:28px;
+			display:flex;
+			align-items:center;
+			justify-content:center;
+			border-radius:50%;
+		}
+
+		.ticket-number{
+			font-size:48px;
+			min-width:120px;
+		}
+		.btn-side{
+			width:70px;
+			height:70px;
+			font-size:32px;
+		}
+
+
     </style>
     <script>
         var socket = io();
@@ -172,17 +201,28 @@
         <div class="reparto-container" id="reparto-{{ reparto[0] }}">
             <button class="btn-toggle" id="toggle-btn-{{ reparto[0] }}" onclick="toggleReparto('{{ reparto[0] }}')">➖</button>
             <div class="reparto-nome">{{ reparto[1] }}</div>
-            <div class="ticket-number" id="ticket-{{ reparto[0] }}">
-                {{ numeri_ticket[reparto[0]] if reparto[0] in numeri_ticket else 0 }}
-            </div>
-            <form method="POST">
-                <input type="hidden" name="reparto" value="{{ reparto[0] }}">
-                <div class="button-container">
-                    <button type="submit" name="azione" value="avanti" class="btn-avanti">Avanti</button>
-                    <button type="submit" name="azione" value="indietro" class="btn-indietro">Indietro</button>
-                    <button type="submit" name="azione" value="reset" class="btn-reset">Reset</button>
-                </div>
-            </form>
+            <form method="POST" class="ticket-controls">
+				<input type="hidden" name="reparto" value="{{ reparto[0] }}">
+
+				<button type="submit" name="azione" value="indietro" class="btn-indietro btn-side">
+					◀
+				</button>
+
+				<div class="ticket-number" id="ticket-{{ reparto[0] }}">
+					{{ numeri_ticket[reparto[0]] if reparto[0] in numeri_ticket else 0 }}
+				</div>
+
+				<button type="submit" name="azione" value="avanti" class="btn-avanti btn-side">
+					▶
+				</button>
+			</form>
+
+			<div style="margin-top:10px;">
+				<button type="submit" formmethod="POST" formaction="" name="azione" value="reset" class="btn-reset">
+					Reset
+				</button>
+			</div>
+
             <div class="set-number-container">
                 <input type="number" id="input-{{ reparto[0] }}" class="input-numero" min="0" placeholder="Numero">
                 <button class="btn-imposta" onclick="setNumber('{{ reparto[0] }}')">Imposta</button>
