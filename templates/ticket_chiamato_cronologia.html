@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -7,128 +8,141 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #000;
-            color: white;
-            display: flex;
-            height: 100vh;
-        }
+:root{
+  /* scala generale della UI */
+  --pad: clamp(10px, 1.5vw, 24px);
+  --gap: clamp(10px, 1.5vw, 20px);
+  --radius: clamp(10px, 1.2vw, 18px);
 
-        /* Sezione sinistra (QR Code e immagini) ridotta al 40% */
-        .left-section {
-            align-items: center;
-            width: 20%;
-            background-color: #222;
-            border-right: 2px solid #ffcc00;
-        }
+  /* testo */
+  --title: clamp(16px, 2.2vw, 30px);
+  --ticket: clamp(56px, 7.5vw, 130px);
 
-        /* Parte superiore per QR Code */
-        .qrcode-wrapper {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            flex-grow: 1; /* Occupa lo spazio disponibile fino alla metà della pagina */
-            max-height: 20%;
-        }
+  /* padding ticket e card: così la card resta "leggermente più grande" */
+  --ticket-pad-y: clamp(10px, 1.2vw, 18px);
+  --ticket-pad-x: clamp(14px, 1.6vw, 26px);
+  --card-pad: clamp(12px, 1.6vw, 22px);
+}
 
-        .qrcode-container {
-            flex-grow: 1; /* Il QR code occupa tutto lo spazio rimanente */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 50%;
-            max-width: 350px; /* Limite massimo per evitare distorsioni */
-            aspect-ratio: 1 / 1;
-        }
+        body{
+			  font-family: Arial, sans-serif;
+			  margin:0;
+			  background:#000;
+			  color:#fff;
+			  display:flex;
+			  min-height:100vh;
+			}
 
-        .qrcode {
-            width: 100%;
-            height: 100%;
-            background: white;
-            padding: 10px;
-            border-radius: 10px;
-        }
-        /* Parte inferiore per immagini a scorrimento */
-        .carousel-container {
-			flex: 0 0 40%;
-			width: 100%;
-			height: 100%;
-			overflow: hidden;
-			position: relative;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-	
-		.carousel-images {
-			display: flex;
-			transition: transform 1s ease-in-out;
-			height: 100%;
-		}
+			.left-section{
+			  width: clamp(220px, 20vw, 420px); /* non collassa su schermi piccoli */
+			  background:#222;
+			  border-right: 2px solid #ffcc00;
+			  display:flex;
+			  flex-direction:column;
+			  align-items:center;
+			  padding: var(--pad);
+			  gap: var(--gap);
+			}
 
-		.carousel-images img {
-			width: 100%;      /* ogni immagine occupa tutta la slide */
-			flex-shrink: 0;   /* impedisce il restringimento */
-		}
+			.right-section{
+			  flex:1;
+			  display:flex;
+			  flex-direction:column;
+			  justify-content:flex-start;       /* così parte in alto */
+			  align-items:center;
+			  padding: var(--pad);
+			  gap: var(--gap);
+			  background:#000;
+			}
 
 
+			.qrcode-wrapper{
+			  width:100%;
+			  display:flex;
+			  flex-direction:column;
+			  align-items:center;
+			  gap: var(--gap);
+			}
 
-        /* Sezione destra (Ticket Chiamati) aumentata al 60% */
-        .right-section {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: center;
-            width: 80%;
-            clamp();
-            background-color: #000;
-			padding-top: 2%; 
-        }
+			.qrcode-container{
+			  width: min(70%, 320px);
+			  aspect-ratio: 1 / 1;
+			  display:flex;
+			  align-items:center;
+			  justify-content:center;
+			}
+
+			.qrcode{
+			  width:100%;
+			  height:100%;
+			  background:#fff;
+			  padding: clamp(6px, 0.8vw, 12px);
+			  border-radius: var(--radius);
+			}
+
+			.carousel-container{
+			  width:100%;
+			  flex:1;                 /* prende lo spazio rimanente senza forzare % */
+			  overflow:hidden;
+			  display:flex;
+			  align-items:center;
+			  justify-content:center;
+			  border-radius: var(--radius);
+			}
+			.carousel-images{
+			  display:flex;
+			  height:100%;
+			  transition: transform 1s ease-in-out;
+			}
+			.carousel-images img{
+			  width:100%;
+			  flex-shrink:0;
+			  object-fit: cover;      /* importantissimo per adattabilità */
+			}
+
 		
-        .reparti-container {
-			flex: 0 0 40%;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 900px;
-        }
+			.reparti-container{
+			  width:100%;
+			  max-width: 1100px;
+			  display:grid;
+			  gap: var(--gap);
+			  grid-template-columns: repeat(auto-fit, minmax(clamp(220px, 22vw, 340px), 1fr));
+			  align-items: start;
+			}
 
 
-		.reparto-container {
-		  background: rgba(255, 255, 255, 0.1);
-		  padding: 16px 20px;      /* spazio fisso controllato */
-		  border-radius: 14px;
-		  text-align: center;
-		  display: inline-flex;    /* si adatta al contenuto */
-		  flex-direction: column;
-		  align-items: center;
-		}
 
-        .reparto-nome {
-            font-size: clamp(18px, 3vw, 30px);
-            font-weight: bold;
-            color: #ffcc00;
-            text-transform: uppercase;
-        }
+			.reparto-container{
+			  background: rgba(255,255,255,0.10);
+			  padding: var(--card-pad);
+			  border-radius: var(--radius);
+			  text-align:center;
+			  display:flex;
+			  flex-direction:column;
+			  align-items:center;
+			  gap: clamp(8px, 1vw, 14px);
+			}
 
-        .ticket-number {
-            font-size: clamp(50px, 8vw, 120px);
-            font-weight: bold;
-            padding: 20px;
-            background-color: #ffcc00;
-            color: black;
-            border-radius: 10px;
-            display: inline-block;
-            min-width: 150px;
-            text-align: center;
-            transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out;
-        }
+
+			.reparto-nome{
+			  font-size: var(--title);
+			  font-weight: 700;
+			  color:#ffcc00;
+			  text-transform: uppercase;
+			}
+
+			.ticket-number{
+			  font-size: var(--ticket);
+			  font-weight: 800;
+			  padding: var(--ticket-pad-y) var(--ticket-pad-x);
+			  background:#ffcc00;
+			  color:#000;
+			  border-radius: calc(var(--radius) - 4px);
+			  display:inline-block;
+			  min-width: clamp(120px, 12vw, 180px);
+			  text-align:center;
+			}
+
 
         .highlight {
             animation: pulse 1s infinite alternate;
