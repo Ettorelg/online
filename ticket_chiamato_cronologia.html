@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Chiamato</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+:root{
+  /* scala generale della UI */
+  --pad: clamp(10px, 1.5vw, 24px);
+  --gap: clamp(10px, 1.5vw, 20px);
+  --radius: clamp(10px, 1.2vw, 18px);
+
+  /* testo */
+  --title: clamp(16px, 2.2vw, 30px);
+  --ticket: clamp(56px, 7.5vw, 130px);
+
+  /* padding ticket e card: così la card resta "leggermente più grande" */
+  --ticket-pad-y: clamp(10px, 1.2vw, 18px);
+  --ticket-pad-x: clamp(14px, 1.6vw, 26px);
+  --card-pad: clamp(12px, 1.6vw, 22px);
+}
+
+        body{
+			  font-family: Arial, sans-serif;
+			  margin:0;
+			  background:#000;
+			  color:#fff;
+			  display:flex;
+			  min-height:100vh;
+			}
+
+			.left-section{
+			  width: clamp(220px, 20vw, 420px); /* non collassa su schermi piccoli */
+			  background:#222;
+			  border-right: 2px solid #ffcc00;
+			  display:flex;
+			  flex-direction:column;
+			  align-items:center;
+			  padding: var(--pad);
+			  gap: var(--gap);
+			}
+
+			.right-section{
+			  flex:1;
+			  display:flex;
+			  flex-direction:column;
+			  justify-content:flex-start;       /* così parte in alto */
+			  align-items:center;
+			  padding: var(--pad);
+			  gap: var(--gap);
+			  background:#000;
+			}
+
+
+			.qrcode-wrapper{
+			  width:100%;
+			  display:flex;
+			  flex-direction:column;
+			  align-items:center;
+			  gap: var(--gap);
+			}
+
+			.qrcode-container{
+			  width: min(70%, 320px);
+			  aspect-ratio: 1 / 1;
+			  display:flex;
+			  align-items:center;
+			  justify-content:center;
+			}
+
+			.qrcode{
+			  width:100%;
+			  height:100%;
+			  background:#fff;
+			  padding: clamp(6px, 0.8vw, 12px);
+			  border-radius: var(--radius);
+			}
+
+			.carousel-container{
+			  width:100%;
+			  flex:1;                 /* prende lo spazio rimanente senza forzare % */
+			  overflow:hidden;
+			  display:flex;
+			  align-items:center;
+			  justify-content:center;
+			  border-radius: var(--radius);
+			}
+			.carousel-images{
+			  display:flex;
+			  height:60%;
+			  transition: transform 1s ease-in-out;
+			}
+			.carousel-images img{
+			  width:100%;
+			  flex-shrink:0;
+			  object-fit: cover;      /* importantissimo per adattabilità */
+			}
+
+		
+			.reparti-container{
+			  width:100%;
+			  max-width: 1100px;
+			  display:grid;
+			  gap: var(--gap);
+			  grid-template-columns: repeat(auto-fit, minmax(clamp(220px, 22vw, 340px), 1fr));
+			  align-items: start;
+			}
+
+
+
+			.reparto-container{
+			  background: rgba(255,255,255,0.10);
+			  padding: var(--card-pad);
+			  border-radius: var(--radius);
+			  text-align:center;
+			  display:flex;
+			  flex-direction:column;
+			  align-items:center;
+			  gap: clamp(8px, 1vw, 14px);
+			}
+
+
+		.reparto-nome{
+		  font-size: var(--title);
+		  font-weight: 700;
+		  color:#ffcc00;
+		  text-transform: uppercase;
+		}
+
+		.ticket-number{
+		  font-size: var(--ticket);
+		  font-weight: 800;
+		  padding: var(--ticket-pad-y) var(--ticket-pad-x);
+		  background:#ffcc00;
+		  color:#000;
+		  border-radius: calc(var(--radius) - 4px);
+		  display:inline-block;
+		  min-width: clamp(120px, 12vw, 180px);
+		  text-align:center;
+		}
+
+
+        .highlight {
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                transform: scale(1);
+                background-color: #ffcc00;
+            }
+            to {
+                transform: scale(1.2);
+                background-color: #ff3300;
+            }
+        }
+
+        .voice-test {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+		.history-wrapper {
+			width: 100%;
+			overflow-y: hidden;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.history-title {
+			font-size: 22px;
+			text-align: center;
+			color: #ffcc00;
+		}
+
+		.history-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		.history-item {
+			background: rgba(255, 255, 255, 0.1);
+			padding: 4px 8px; /* ridotto da 10px */
+			border-radius: 6px; /* più stretto */
+			display: flex;
+			flex-direction: row;
+			justify-content: space-between;
+			align-items: center;
+			gap: 4px;
+			font-weight: bold;
+			margin-bottom: 3px; /* aggiunto per ridurre spazio verticale */
+			transition: transform 0.3s ease-in-out, background 0.2s ease-in-out;
+		}
+
+		.history-time {
+			font-size: 14px;
+			opacity: 0.7;
+			min-width: 50px;
+			text-align: right;
+		}
+
+		.history-text {
+			font-size: 20px;
+			color: #ffcc00;
+			text-transform: uppercase;
+			flex: 1;
+			text-align: left;
+			white-space: nowrap;       /* evita che vada a capo */
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+
+		.history-number {
+			font-size: 24px;
+			background: #ffcc00;
+			color: black;
+			padding: 4px 10px; /* ridotto */
+			border-radius: 6px;
+			min-width: 42px;
+			text-align: center;
+		}
+
+		.history-item:hover {
+			transform: scale(1.02);
+			background: rgba(255, 255, 255, 0.16);
+		}
+
+		/* Animazione ingresso elemento cronologia */
+		.fade-in {
+		  animation: fadeInUp 350ms ease-out;
+		}
+
+		@keyframes fadeInUp {
+		  from {
+			opacity: 0;
+			transform: translateY(12px);
+		  }
+		  to {
+			opacity: 1;
+			transform: translateY(0);
+		  }
+		}
+
+		/* (opzionale) leggero highlight appena inserito */
+		.just-added {
+		  box-shadow: 0 0 0 2px #ffcc00 inset;
+		}
+		        .audio-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+
+        .audio-toggle {
+            background: none;
+            border: none;
+            color: #ffcc00;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .audio-toggle span {
+            font-size: 18px;
+        }
+
+        .audio-body {
+            margin-top: 8px;
+        }
+
+        .audio-body.hidden {
+            display: none;
+        }
+
+        .audio-mode-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .audio-icon {
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .audio-icon.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+
+    </style>
+<script>
+    var socket = io("wss://software.alphasystemsrl.it", {
+		transports: ["websocket"],
+		secure: true,
+		reconnection: true
+	});
+
+	function getUserIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get("user");
+}
+
+    var selectedVoice = null;
+    var audio = new Audio("https://software.alphasystemsrl.it/static/ding.mp3");
+
+    function getAudioPreference() {
+        return localStorage.getItem("audioMode") || "synth"; 
+    }
+
+    function saveAudioPreference() {
+        let mode = document.getElementById("audioMode").value;
+        localStorage.setItem("audioMode", mode);
+        console.log("🎵 Modalità audio salvata:", mode);
+    }
+	
+	function setAudioMode(mode) {
+        // salva in localStorage
+        localStorage.setItem("audioMode", mode);
+
+        // aggiorna select, se presente
+        const select = document.getElementById("audioMode");
+        if (select) select.value = mode;
+
+        // aggiorna icone
+        const synthIcon = document.getElementById("synthMode");
+        const fileIcon  = document.getElementById("fileMode");
+
+        if (synthIcon && fileIcon) {
+            if (mode === "synth") {
+                synthIcon.classList.add("active");
+                fileIcon.classList.remove("active");
+            } else {
+                fileIcon.classList.add("active");
+                synthIcon.classList.remove("active");
+            }
+        }
+
+        console.log("🔊 Modalità audio impostata:", mode);
+    }
+
+    function toggleAudioPanel() {
+        const panelBody = document.getElementById("audioPanelBody");
+        if (!panelBody) return;
+        panelBody.classList.toggle("hidden");
+    }
+
+    function loadVoices() {
+        var voices = window.speechSynthesis.getVoices();
+        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
+                        voices.find(v => v.name.includes("Google italiano femminile")) ||
+                        voices.find(v => v.name.includes("Alice")) ||
+                        voices.find(v => v.name.toLowerCase().includes("female")) ||
+                        voices.find(v => v.lang === "it-IT");
+
+        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
+    }
+
+    function announceNumber(number, reparto) {
+        let mode = getAudioPreference();
+
+        if (mode === "synth" && 'speechSynthesis' in window) {
+            var msg = new SpeechSynthesisUtterance("Serviamo il " +reparto+ " " + number);
+            msg.voice = selectedVoice;
+            msg.rate = 0.7;
+            msg.pitch = 1.0;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
+
+    function highlightNumber(element) {
+        element.classList.add("highlight");
+        setTimeout(() => element.classList.remove("highlight"), 15000);
+    }
+
+    socket.on("update_tickets", function(numeri) {
+        for (var reparto in numeri) {
+            var ticketElement = document.getElementById("ticket-" + reparto);
+            if (ticketElement) {
+                var oldNumber = ticketElement.innerText;
+                ticketElement.innerText = numeri[reparto];
+
+                if (oldNumber != numeri[reparto]) {
+                    highlightNumber(ticketElement);
+                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
+                }
+            }
+        }
+		loadHistory(); // <— aggiungi questa riga alla fine
+    });
+// 👇 SOSTITUISCI la funzione
+	async function loadHistory(limit = 10) {
+	  try {
+		const cacheBust = Date.now();
+		const user = new URLSearchParams(window.location.search).get("user");
+		const res = await fetch(`/api/cronologia_utente?user=${user}&limit=${limit}&_=${cacheBust}`);
+
+		socket.emit("join", { room: "user_" + user });
+
+		const data = await res.json();
+
+		const ul = document.getElementById("historyList");
+		if (!ul) return;
+
+		ul.innerHTML = "";
+		data.slice(0, 10).forEach(item => {
+		  // Ora IT con +1h, robusta a ISO o "HH:MM"
+		  let displayTime = "";
+		  if (item.created_at) {
+			const d = new Date(item.created_at);
+			if (!isNaN(d)) {
+			  d.setHours(d.getHours() + 1); // +1 ora
+			  displayTime = new Intl.DateTimeFormat("it-IT", {
+				hour: "2-digit",
+				minute: "2-digit",
+				timeZone: "Europe/Rome"
+			  }).format(d);
+			}
+		  }
+		  if (!displayTime) {
+			if (item.ora && item.ora.includes(":")) {
+			  let [h, m] = item.ora.split(":");
+			  h = (parseInt(h, 10) + 1) % 24; // fallback +1h su stringa HH:MM
+			  displayTime = `${String(h).padStart(2, "0")}:${m}`;
+			} else {
+			  displayTime = ""; // fallback finale
+			}
+		  }
+
+		  const li = document.createElement("li");
+		  li.className = "history-item";
+		  li.innerHTML = `
+			<span class="history-number">${item.numero}</span>
+			<span class="history-text">${item.reparto}</span>
+			<span class="history-time">${displayTime}</span>
+		  `;
+		  ul.appendChild(li);
+		});
+	  } catch (e) {
+		console.error("Errore fetch cronologia:", e);
+	  }
+	}
+
+	// Avvio + (facoltativo) polling
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000); // opzionale
+	});
+
+
+	// aggiorna la cronologia quando arrivano nuove chiamate
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	// avvio + polling leggero
+	document.addEventListener("DOMContentLoaded", function () {
+	  loadHistory(50);
+	  setInterval(loadHistory, 15000);
+	});
+
+
+	// Aggiorna cronologia quando cambia un ticket
+	socket.on("update_tickets", function() { loadHistory(); });
+
+	setInterval(loadHistory, 15000); // refresh ogni 15s
+	document.addEventListener("DOMContentLoaded", loadHistory);
+
+
+
+
+    function testVoice() {
+        let mode = getAudioPreference();
+        if (mode === "synth") {
+            var msg = new SpeechSynthesisUtterance("Audio attivato");
+            msg.voice = selectedVoice;
+            msg.rate = 0.6;
+            msg.pitch = 1.2;
+            window.speechSynthesis.speak(msg);
+        } else {
+            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        let qrContainer = document.getElementById("qrcode");
+
+        function generateQRCode() {
+            qrContainer.innerHTML = ""; // Svuota il contenitore
+            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+
+            // 🔹 Ottieni l'ID dell'utente dal backend
+            let userId = "{{ user_id }}";
+
+            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
+            if (!userId || userId.trim() === "") {
+                console.error("❌ Errore: user_id non è definito.");
+                return;
+            }
+
+            // 🔹 Genera il QR Code con l'ID dell'utente
+            new QRCode(qrContainer, {
+                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+                width: size,
+                height: size
+            });
+
+            console.log("✅ QR Code generato con successo per user_id:", userId);
+        }
+
+        // 🔹 Genera il QR Code dopo il caricamento della pagina
+        setTimeout(generateQRCode, 100);
+
+
+        // Scorrimento immagini
+        let currentIndex = 0;
+		const carousel = document.querySelector(".carousel-images");
+		const items = carousel.children;
+		const total = items.length;
+
+		setInterval(() => {
+			currentIndex = (currentIndex + 1) % total;
+			carousel.style.transform = `translateX(-${currentIndex * 100}%)`;
+		}, 3000);
+
+
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        setTimeout(loadVoices, 500);
+		const audioModeSelect = document.getElementById("audioMode");
+        if (audioModeSelect) {
+            const saved = getAudioPreference();
+            audioModeSelect.value = saved;
+            // sincronizza icone
+            setAudioMode(saved);
+        }
+
+    });
+	
+</script>
+
+</head>
+<body>
+<div class="left-section">
+	<div class="history-wrapper">
+		<h2 class="history-title">🕘 Cronologia Ticket</h2>
+		<ul class="history-list" id="historyList"></ul>
+	
+    </div>
+
+</div>
+
+<div class="right-section">
+    <div class="reparti-container">
+        {% for reparto in reparti %}
+        <div class="reparto-container">
+            <div class="reparto-nome">{{ reparto[1] }}</div>
+            <div class="ticket-number" id="ticket-{{ reparto[0] }}" data-reparto="{{ reparto[1] }}">
+                {{ numeri_chiamati[reparto[0]] if reparto[0] in numeri_chiamati else 0 }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <!-- Immagini a scorrimento in basso -->
+    <div class="carousel-container">
+        <div class="carousel-images">
+            {% for immagine in immagini %}
+            <img src="{{ immagine }}" alt="Immagine" />
+            {% endfor %}
+        </div>
+    </div>
+<div style="position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            cursor: pointer; text-align: center;">
+
+    <div class="audio-mode-container" style="display: flex; gap: 10px; align-items: center; justify-content: center;">
+        <span id="synthMode" class="audio-icon active" onclick="setAudioMode('synth')" style="font-size: 24px; cursor: pointer; opacity: 1; transition: transform 0.2s, opacity 0.2s;">🔊</span>
+        <span id="fileMode" class="audio-icon" onclick="setAudioMode('file')" style="font-size: 24px; cursor: pointer; opacity: 0.5; transition: transform 0.2s, opacity 0.2s;">🎵</span>
+
+	</div>
+	 
+	
+</div>
+
+
+
+
+
+</div>
+
+</body>
+</html>
