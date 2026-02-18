@@ -23,6 +23,8 @@
   --ticket-pad-x: clamp(14px, 1.6vw, 26px);
   --card-pad: clamp(12px, 1.6vw, 22px);
 }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 
         body{
 			  font-family: Arial, sans-serif;
@@ -45,15 +47,18 @@
 			}
 
 			.right-section{
-			  flex:1;
-			  display:flex;
-			  flex-direction:column;
-			  justify-content:flex-start;
-			  align-items:center;
+			  flex: 1;
+			  display: flex;
+			  flex-direction: column;
+			  justify-content: flex-start;
+			  align-items: center;
 			  padding: var(--pad);
 			  gap: var(--gap);
-			  height:100vh;
+
+			  height: 100dvh;     /* meglio di 100vh su browser moderni */
+			  min-height: 0;      /* fondamentale */
 			}
+
 
 			.carousel-container{
 			  width:100%;
@@ -116,9 +121,12 @@
 			  grid-template-columns: repeat(auto-fit, minmax(clamp(220px, 22vw, 340px), 1fr));
 			  align-content:start;
 
-			  max-height: 50vh;     /* <-- limite massimo */
-			  overflow:hidden;      /* evita che spinga sotto */
+			  max-height: 50vh;
+			  overflow: hidden;
+			  min-height: 0;
 			}
+
+			
 
 
 
