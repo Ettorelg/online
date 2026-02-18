@@ -186,14 +186,21 @@
     <script>
         var socket = io();
 
-        socket.on("update_tickets", function(numeri) {
-            for (var reparto in numeri) {
-                var ticketElement = document.getElementById("ticket-" + reparto);
-                if (ticketElement) {
-                    ticketElement.innerText = numeri[reparto];
-                }
-            }
-        });
+		socket.on("update_tickets", function(numeri) {
+		  for (var reparto in numeri) {
+			var ticketElement = document.getElementById("ticket-" + reparto);
+			if (ticketElement) {
+			  // se è un input -> value, altrimenti innerText
+			  if ("value" in ticketElement) {
+				ticketElement.value = numeri[reparto];
+				ticketElement.setAttribute("data-last", numeri[reparto]);
+			  } else {
+				ticketElement.innerText = numeri[reparto];
+			  }
+			}
+		  }
+		});
+
 
         function setNumber(repartoId) {
             let nuovoNumero = document.getElementById("input-" + repartoId).value;
