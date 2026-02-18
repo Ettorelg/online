@@ -116,11 +116,17 @@
 
         /* Nasconde il contenuto dei reparti chiusi */
         .collapsed {
-            max-height: 50px;
-            opacity: 0.8;
-            overflow: hidden;
-            padding-bottom: 5px;
+            padding: 15px;
         }
+		.reparto-container.collapsed {
+			padding: 15px;
+		}
+		.reparto-container.collapsed .ticket-controls,
+		.reparto-container.collapsed .set-number-container,
+		.reparto-container.collapsed .btn-reset-mini-form {
+			display: none;
+		}
+
 		.ticket-controls{
 			display:flex;
 			align-items:center;
