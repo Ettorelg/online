@@ -159,19 +159,19 @@
 			right: 15px;
 		}
 
-		.reset-form .btn-reset{
-			padding: 6px 12px;
-			font-size: 14px;
+		.btn-reset-mini-form{
+			position:absolute;
+			bottom:10px;
+			right:10px;
 		}
-		.btn-reset{
+
+		.btn-reset-mini{
 			background:#dc3545;
-			opacity:0.85;
 		}
 
-		.btn-reset:hover{
-			opacity:1;
+		.btn-reset-mini:hover{
+			background:#c82333;
 		}
-
 
     </style>
     <script>
@@ -240,12 +240,16 @@
 				</button>
 			</form>
 
-			<form method="POST" class="reset-form">
+			<form method="POST" class="btn-reset-mini-form">
 				<input type="hidden" name="reparto" value="{{ reparto[0] }}">
-				<button type="submit" name="azione" value="reset" class="btn-reset">
-					Reset
+				<button type="submit"
+						name="azione"
+						value="reset"
+						class="btn-toggle btn-reset-mini">
+					↺
 				</button>
 			</form>
+
 
             <div class="set-number-container">
                 <input type="number" id="input-{{ reparto[0] }}" class="input-numero" min="0" placeholder="Numero">
