@@ -148,6 +148,29 @@
 			height:70px;
 			font-size:32px;
 		}
+		.reparto-container{
+			position: relative; /* importante */
+		}
+
+		/* posizionamento reset */
+		.reset-form{
+			position: absolute;
+			bottom: 15px;
+			right: 15px;
+		}
+
+		.reset-form .btn-reset{
+			padding: 6px 12px;
+			font-size: 14px;
+		}
+		.btn-reset{
+			background:#dc3545;
+			opacity:0.85;
+		}
+
+		.btn-reset:hover{
+			opacity:1;
+		}
 
 
     </style>
@@ -217,11 +240,12 @@
 				</button>
 			</form>
 
-			<div style="margin-top:10px;">
-				<button type="submit" formmethod="POST" formaction="" name="azione" value="reset" class="btn-reset">
+			<form method="POST" class="reset-form">
+				<input type="hidden" name="reparto" value="{{ reparto[0] }}">
+				<button type="submit" name="azione" value="reset" class="btn-reset">
 					Reset
 				</button>
-			</div>
+			</form>
 
             <div class="set-number-container">
                 <input type="number" id="input-{{ reparto[0] }}" class="input-numero" min="0" placeholder="Numero">
