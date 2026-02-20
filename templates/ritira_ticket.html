@@ -198,14 +198,17 @@
 
     <!-- 🔹 Lista reparti -->
     <div class="container">
-        {% for reparto in reparti %}
-        <div class="reparto-container">
-            <div class="reparto-nome">{{ reparto[1] }}</div>
-            <div class="button-container">
-                <button onclick="prendiTicket({{ reparto[0] }})">Prendi Ticket</button>
-            </div>
-        </div>
-        {% endfor %}
+		{% for reparto in reparti %}
+		<div class="reparto-container">
+			<div class="reparto-nome">{{ reparto[1] }}</div>
+			<div class="button-container">
+				<button onclick="prendiTicket({{ reparto[0] }}, '{{ reparto[1]|escapejs }}')">
+					Prendi Ticket
+				</button>
+			</div>
+		</div>
+		{% endfor %}
+
     </div>
 
 </div>
@@ -216,56 +219,49 @@
 </audio>
 
 <script>
-function prendiTicket(repartoId) {
+function prendiTicket(repartoId, repartoNome) {
     console.log("📢 DEBUG: Reparto selezionato ID =", repartoId);
 
-    fetch(`/api/get_ticket?reparto_id=${repartoId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const ip = data.ip_stampante;
-                const repartoNome = data.reparto;
-                const ticketNumber = data.numero_ticket;
+    const formData = new URLSearchParams();
+    formData.append("reparto", repartoId);
+    formData.append("reparto_nome", repartoNome);
 
-                console.log("✅ Ticket ricevuto:", ip, repartoNome, ticketNumber);
+    fetch("/ritira_ticket", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: formData.toString()
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("✅ Risposta server:", data);
 
-                if (!ip) {
-                    alert("❌ Nessuna stampante associata a questo reparto!");
-                    return;
-                }
+        if (!data.success) {
+            alert(data.message || "Errore nel recupero/stampa del ticket.");
+            return;
+        }
 
-                if (typeof window.Android !== "undefined" && typeof window.Android.printTicket === "function") {
-                    window.Android.printTicket(ip, repartoNome, ticketNumber);
-                } else {
-                    alert("⚠️ Errore: interfaccia Android non trovata!");
-                }
-            } else {
-                alert("Errore nel recupero del ticket.");
-            }
-        })
-        .catch(error => {
-            console.error("Errore nella richiesta:", error);
-            alert("Errore di connessione al server.");
-        });
+        const ticketNumber = data.ticket_number;
+        const nomeReparto = data.reparto_nome;
+        const ip          = data.ip_stampante;
+
+        let msg = `Hai preso il ticket n. ${ticketNumber} per il reparto "${nomeReparto}".`;
+
+        if (!ip) {
+            msg += "\n⚠️ Nessuna stampante associata a questo reparto.";
+        } else {
+            msg += "\n🖨 Ticket inviato alla stampante.";
+        }
+
+        alert(msg);
+    })
+    .catch(error => {
+        console.error("Errore nella richiesta:", error);
+        alert("Errore di connessione al server.");
+    });
 }
-
-
-document.addEventListener("DOMContentLoaded", function () {
-    const qrDiv = document.getElementById("qrcode");
-    const userId = "{{ user_id }}";
-
-    if (!userId || userId.includes("{")) {
-        console.error("❌ user_id non definito correttamente da Flask");
-    } else {
-        new QRCode(qrDiv, {
-            text: `${window.location.origin}/ritira_ticket_qr?user=${userId}`,
-            width: 200,
-            height: 200
-        });
-    }
-});
 </script>
-
 
 </body>
 
