@@ -9,17 +9,23 @@ import uuid
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
+# 📂 Cartella upload (persistente, montata come volume su Railway)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 
-# Cartella dove salvare le immagini caricate
-UPLOAD_FOLDER = os.path.join(app.root_path, "static")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+# Estensioni consentite
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-    
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
+  
 # DB: leggi da env (se non presente, fallback al tuo URL)
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -814,11 +820,13 @@ def eliminacode(user_id):
                     commit=True
                 )
 
+                # prendo l’ultimo reparto con quel nome (più sicuro con ORDER BY DESC)
                 reparto_id = db.execute_query(
                     """
                     SELECT id FROM reparti
                     WHERE nome = %s
-                    ORDER BY id DESC LIMIT 1
+                    ORDER BY id DESC
+                    LIMIT 1
                     """,
                     (nome_reparto,)
                 )[0][0]
@@ -874,10 +882,13 @@ def eliminacode(user_id):
             if file and allowed_file(file.filename):
                 ext = file.filename.rsplit(".", 1)[1].lower()
                 new_name = f"user{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+
+                # Salva fisicamente in static/uploads/...
                 save_path = os.path.join(app.config["UPLOAD_FOLDER"], new_name)
                 file.save(save_path)
 
-                relative_url = f"/static/{new_name}"
+                # URL da usare nell'HTML
+                relative_url = f"/static/uploads/{new_name}"
 
                 db.execute_query(
                     "INSERT INTO immagini_utenti (id_utente, immagine_url) VALUES (%s, %s)",
@@ -894,7 +905,7 @@ def eliminacode(user_id):
             )
 
             if row:
-                img_url = row[0][0]
+                img_url = row[0][0]  # es. "/static/uploads/xxx.jpg"
                 file_path = os.path.join(app.root_path, img_url.lstrip("/"))
                 if os.path.exists(file_path):
                     os.remove(file_path)
