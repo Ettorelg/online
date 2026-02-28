@@ -126,7 +126,7 @@
 
         <div class="button-container">
             {% if eliminacode_attiva %}
-                <button class="btn-eliminacode" onclick="window.location.href='{{ url_for('eliminacode', user_id=user_id) }}'">
+                <button class="btn-eliminacode" onclick="window.location.href='/eliminacode/{{ user_id }}'">
                     Gestione Eliminacode
                 </button>
             {% endif %}
