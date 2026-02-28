@@ -772,11 +772,6 @@ def gestisci_eliminacode(user_id):
         file_reparto=file_reparto,
         immagini=immagini
     )
-@app.route("/eliminacode")
-def eliminacode_redirect():
-    if "user_id" not in session:
-        return redirect("/login")
-    return redirect(f"/eliminacode/{session['user_id']}")
     
 @app.route("/eliminacode/<int:user_id>", methods=["GET", "POST"])
 def eliminacode(user_id):
@@ -935,7 +930,6 @@ def eliminacode(user_id):
     )
 
     db.close()
-
     return render_template(
         "eliminacode.html",
         user_id=user_id,
