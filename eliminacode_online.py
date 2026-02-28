@@ -778,14 +778,14 @@ def eliminacode(user_id):
 
 @app.route("/eliminacode")
 def eliminacode_redirect():
-    # se non è loggato lo butto al login
     if "user_id" not in session:
         return redirect("/login")
-
-    # prendo il suo id e lo mando alla pagina corretta
-    user_id = session["user_id"]
-    return redirect(f"/eliminacode/{user_id}")
+    return redirect(f"/eliminacode/{session['user_id']}")
     
+    # Può modificare solo il proprio account
+    if session["user_id"] != user_id:
+        return redirect("/login")
+
     db = Database()
 
     # -------------------------
