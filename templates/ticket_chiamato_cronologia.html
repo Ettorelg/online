@@ -35,16 +35,33 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 			  min-height:100vh;
 			}
 
-			.left-section{
-			  width: clamp(220px, 20vw, 420px); /* non collassa su schermi piccoli */
-			  background:#222;
+			.left-section {
+			  width: clamp(220px, 20vw, 420px);
+			  background: #222;
 			  border-right: 2px solid #ffcc00;
-			  display:flex;
-			  flex-direction:column;
-			  align-items:center;
+			  display: flex;
+			  flex-direction: column;
 			  padding: var(--pad);
 			  gap: var(--gap);
 			}
+
+			/* Logo alto */
+			.logo-top,
+			.logo-bottom {
+			  width: 100%;
+			  display: flex;
+			  justify-content: center;
+			  align-items: center;
+			}
+
+			.logo-top img,
+			.logo-bottom img {
+			  max-width: 80%;
+			  max-height: 120px;
+			  object-fit: contain;
+			}
+
+
 
 			.right-section{
 			  flex: 1;
@@ -609,10 +626,21 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 </head>
 <body>
 <div class="left-section">
-	<div class="history-wrapper">
-		<h2 class="history-title">🕘 Cronologia Ticket</h2>
-		<ul class="history-list" id="historyList"></ul>
-	
+
+    <!-- Logo Alto -->
+    <div class="logo-top">
+        <img src="/static/logo_top.png" alt="Logo Alto">
+    </div>
+
+    <!-- Cronologia -->
+    <div class="history-wrapper">
+        <h2 class="history-title">🕘 Cronologia Ticket</h2>
+        <ul class="history-list" id="historyList"></ul>
+    </div>
+
+    <!-- Logo Basso -->
+    <div class="logo-bottom">
+        <img src="/static/logo_bottom.png" alt="Logo Basso">
     </div>
 
 </div>
