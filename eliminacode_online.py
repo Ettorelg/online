@@ -936,7 +936,14 @@ def eliminacode(user_id):
         reparti=reparti,
         immagini=immagini
     )
+@app.route("/eliminacode")
+def eliminacode_redirect():
+    # se non è loggato, mando al login
+    if "user_id" not in session:
+        return redirect("/login")
 
+    # prendo l'id dalla sessione e reindirizzo alla route corretta
+    return redirect(url_for("eliminacode", user_id=session["user_id"]))
 @app.route("/gestisci_prenotazioni/<int:user_id>", methods=["GET", "POST"])
 def gestisci_prenotazioni(user_id):
     if not session.get("is_admin"):
