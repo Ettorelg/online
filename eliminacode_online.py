@@ -776,12 +776,10 @@ def gestisci_eliminacode(user_id):
 @app.route("/eliminacode/<int:user_id>", methods=["GET", "POST"])
 def eliminacode(user_id):
 
-@app.route("/eliminacode")
-def eliminacode_redirect():
+    # Deve essere loggato
     if "user_id" not in session:
         return redirect("/login")
-    return redirect(f"/eliminacode/{session['user_id']}")
-    
+
     # Può modificare solo il proprio account
     if session["user_id"] != user_id:
         return redirect("/login")
