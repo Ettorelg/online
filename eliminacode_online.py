@@ -4,13 +4,22 @@ from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
 from escpos.printer import Network
+from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
 
-# Consigliato per SocketIO in produzione su Railway
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+# Cartella dove salvare le immagini caricate
+UPLOAD_FOLDER = os.path.join(app.root_path, "static")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    
 # DB: leggi da env (se non presente, fallback al tuo URL)
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -578,46 +587,95 @@ def gestisci_eliminacode(user_id):
     if request.method == "POST":
         azione = request.form.get("azione")
 
+        # -----------------------
+        # REPARTI / FILE / VISIBILITÀ
+        # -----------------------
         if azione == "aggiungi_reparto":
-            nome_reparto = request.form.get("nuovo_reparto").strip()
+            nome_reparto = request.form.get("nuovo_reparto", "").strip()
             ip_reparto = request.form.get("ip_reparto", "").strip()  # Permetti IP vuoto
             visibile_ritira = request.form.get("visibile_ritira", "off") == "on"  # Visibilità in ritira_ticket
-            visibile_qr = request.form.get("visibile_qr", "off") == "on"  # Visibilità in visualizza_ticket_qr
+            visibile_qr = request.form.get("visibile_qr", "off") == "on"          # Visibilità in visualizza_ticket_qr
+
             if nome_reparto:
                 db.execute_query(
-                    "INSERT INTO reparti (nome, ip_address, id_licenza, visibile_ritira, visibile_qr) VALUES (%s, NULLIF(%s, ''), (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'), %s, %s)", 
-                    (nome_reparto, ip_reparto, user_id, visibile_ritira, visibile_qr), commit=True
+                    """
+                    INSERT INTO reparti (nome, ip_address, id_licenza, visibile_ritira, visibile_qr)
+                    VALUES (
+                        %s,
+                        NULLIF(%s, ''),
+                        (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'),
+                        %s,
+                        %s
+                    )
+                    """,
+                    (nome_reparto, ip_reparto, user_id, visibile_ritira, visibile_qr),
+                    commit=True
                 )
+
                 # Assegna di default il numero massimo a 0 quando si crea un nuovo reparto
-                reparto_id = db.execute_query("SELECT id FROM reparti WHERE nome = %s", (nome_reparto,))[0][0]
+                reparto_id = db.execute_query(
+                    """
+                    SELECT id
+                    FROM reparti
+                    WHERE nome = %s
+                      AND id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (nome_reparto, user_id)
+                )[0][0]
+
                 db.execute_query(
                     "INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo) VALUES (%s, 0, 0)",
-                    (reparto_id,), commit=True
+                    (reparto_id,),
+                    commit=True
                 )
 
         elif azione == "modifica_ip":
             reparto_id = request.form.get("reparto_id")
             nuovo_ip = request.form.get("nuovo_ip", "").strip()
-            db.execute_query("UPDATE reparti SET ip_address = NULLIF(%s, '') WHERE id = %s", (nuovo_ip, reparto_id), commit=True)
+            db.execute_query(
+                "UPDATE reparti SET ip_address = NULLIF(%s, '') WHERE id = %s",
+                (nuovo_ip, reparto_id),
+                commit=True
+            )
 
         elif azione == "modifica_visibilita":
             reparto_id = request.form.get("reparto_id")
             visibile_ritira = request.form.get("visibile_ritira", "off") == "on"
             visibile_qr = request.form.get("visibile_qr", "off") == "on"
-            db.execute_query("UPDATE reparti SET visibile_ritira = %s, visibile_qr = %s WHERE id = %s", (visibile_ritira, visibile_qr, reparto_id), commit=True)
+            db.execute_query(
+                "UPDATE reparti SET visibile_ritira = %s, visibile_qr = %s WHERE id = %s",
+                (visibile_ritira, visibile_qr, reparto_id),
+                commit=True
+            )
 
         elif azione == "elimina_reparto":
             reparto_id = request.form.get("elimina_reparto")
-            db.execute_query("DELETE FROM reparti WHERE id = %s", (reparto_id,), commit=True)
+            db.execute_query(
+                "DELETE FROM reparti WHERE id = %s",
+                (reparto_id,),
+                commit=True
+            )
 
         elif azione == "aggiungi_fila":
             reparto_id = request.form.get("reparto_id")
-            nuova_fila = request.form.get("nuova_fila").strip()
-            db.execute_query("INSERT INTO file_reparto (nome, id_reparto) VALUES (%s, %s)", (nuova_fila, reparto_id), commit=True)
+            nuova_fila = request.form.get("nuova_fila", "").strip()
+            if nuova_fila:
+                db.execute_query(
+                    "INSERT INTO file_reparto (nome, id_reparto) VALUES (%s, %s)",
+                    (nuova_fila, reparto_id),
+                    commit=True
+                )
 
         elif azione == "elimina_fila":
             fila_id = request.form.get("elimina_file")
-            db.execute_query("DELETE FROM file_reparto WHERE id = %s", (fila_id,), commit=True)
+            db.execute_query(
+                "DELETE FROM file_reparto WHERE id = %s",
+                (fila_id,),
+                commit=True
+            )
+
         elif azione == "modifica_visualizzazione":
             reparto_id = request.form.get("reparto_id")
             # checkbox -> "on" se spuntato, assente se non spuntato
@@ -630,21 +688,90 @@ def gestisci_eliminacode(user_id):
                 commit=True
             )
 
+        # -----------------------
+        # IMMAGINI UTENTE
+        # -----------------------
+        elif azione == "aggiungi_immagine":
+            file = request.files.get("immagine_file")
+            if file and allowed_file(file.filename):
+                # Estensione
+                ext = file.filename.rsplit(".", 1)[1].lower()
+
+                # Nome unico: user<ID>_<uuid>.ext
+                new_name = f"user{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+
+                # Percorso fisico nella cartella static
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], new_name)
+                file.save(save_path)
+
+                # URL pubblico da salvare nel DB (usato nel src delle immagini)
+                relative_url = f"/static/{new_name}"
+
+                db.execute_query(
+                    "INSERT INTO immagini_utenti (id_utente, immagine_url) VALUES (%s, %s)",
+                    (user_id, relative_url),
+                    commit=True
+                )
+
+        elif azione == "elimina_immagine":
+            immagine_id = request.form.get("immagine_id")
+            if immagine_id:
+                # Prendo l'URL per cancellare anche il file fisico
+                row = db.execute_query(
+                    "SELECT immagine_url FROM immagini_utenti WHERE id = %s AND id_utente = %s",
+                    (immagine_id, user_id)
+                )
+                if row:
+                    img_url = row[0][0]  # es: /static/user5_abcd1234.png
+                    file_path = os.path.join(app.root_path, img_url.lstrip("/"))
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+
+                db.execute_query(
+                    "DELETE FROM immagini_utenti WHERE id = %s AND id_utente = %s",
+                    (immagine_id, user_id),
+                    commit=True
+                )
+
+        db.close()
         return redirect(f"/gestisci_eliminacode/{user_id}")
 
+    # -----------------------
+    # GET: CARICAMENTO DATI
+    # -----------------------
     reparti = db.execute_query(
-        "SELECT id, nome, ip_address, visibile_ritira, visibile_qr, visualizza_cronologia, visualizza_qrcode "
-        "FROM reparti WHERE id_licenza = (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode')",
+        """
+        SELECT id, nome, ip_address, visibile_ritira, visibile_qr, visualizza_cronologia, visualizza_qrcode
+        FROM reparti
+        WHERE id_licenza = (
+            SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'
+        )
+        """,
         (user_id,)
     )
 
     file_reparto = {
-        reparto[0]: db.execute_query("SELECT id, nome FROM file_reparto WHERE id_reparto = %s", (reparto[0],)) for reparto in reparti
+        reparto[0]: db.execute_query(
+            "SELECT id, nome FROM file_reparto WHERE id_reparto = %s",
+            (reparto[0],)
+        )
+        for reparto in reparti
     }
 
-    db.close()
-    return render_template("gestisci_eliminacode.html", user_id=user_id, reparti=reparti, file_reparto=file_reparto)
+    # Immagini collegate a questo utente
+    immagini = db.execute_query(
+        "SELECT id, immagine_url FROM immagini_utenti WHERE id_utente = %s",
+        (user_id,)
+    )
 
+    db.close()
+    return render_template(
+        "gestisci_eliminacode.html",
+        user_id=user_id,
+        reparti=reparti,
+        file_reparto=file_reparto,
+        immagini=immagini
+    )
 
 @app.route("/gestisci_prenotazioni/<int:user_id>", methods=["GET", "POST"])
 def gestisci_prenotazioni(user_id):
