@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestione Eliminacode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            background: url("/static/background.png") no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h2, h3 {
+            color: #333;
+            margin-top: 10px;
+        }
+
+        .button-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .button-container button {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            transition: 0.3s ease-in-out;
+        }
+
+        .btn-ticket { background: #007bff; }
+        .btn-ticket:hover { background: #0056b3; }
+
+        .btn-ritira { background: #28a745; }
+        .btn-ritira:hover { background: #218838; }
+
+        .btn-ritirato { background: #ff9800; }
+        .btn-ritirato:hover { background: #e68900; }
+
+        .btn-back { background: #dc3545; }
+        .btn-back:hover { background: #c82333; }
+
+        .section {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        input, select, button[type="submit"] {
+            width: 90%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button[type="submit"] {
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background: #218838;
+        }
+
+        .btn-delete {
+            background: #dc3545 !important;
+        }
+
+        .btn-delete:hover {
+            background: #c82333 !important;
+        }
+
+        img.preview {
+            max-width: 150px;
+            max-height: 100px;
+            object-fit: contain;
+        }
+
+        @media (max-width: 768px) {
+            .button-container button {
+                width: 100%;
+            }
+            input, select, button[type="submit"] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <h2>Gestione Eliminacode</h2>
+
+    <!-- MENU OPERATIVO -->
+    <div class="button-container">
+        <button class="btn-ticket" onclick="window.location.href='/gestione_ticket'">
+            (TELECOMANDO) Gestione Ticket
+        </button>
+
+        <button class="btn-ritira" onclick="window.location.href='/ritira_ticket'">
+            (ANDROID APP) Ritira Ticket
+        </button>
+
+        <button class="btn-ritirato" onclick="window.location.href='/ticket_chiamato'">
+            (VISUALIZZA) Ticket QR code
+        </button>
+
+        <button class="btn-ritirato" onclick="window.location.href='/ticket_chiamato_cronologia?user={{ user_id }}'">
+            (VISUALIZZA) Ticket Cronologia
+        </button>
+
+        <button class="btn-back" onclick="window.location.href='/dashboard_user'">
+            Torna alla Dashboard
+        </button>
+    </div>
+
+    <!-- CONFIGURAZIONE REPARTI -->
+    <div class="section">
+        <h3>Aggiungi Reparto</h3>
+        <form method="POST">
+            <input type="text" name="nuovo_reparto" placeholder="Nome Reparto" required>
+            <input type="text" name="ip_reparto" placeholder="Indirizzo IP (Opzionale)">
+            <button type="submit" name="azione" value="aggiungi_reparto">Aggiungi Reparto</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h3>Reparti Esistenti</h3>
+        <table>
+            <tr>
+                <th>Reparto</th>
+                <th>Indirizzo IP</th>
+                <th>Visibilità</th>
+                <th>Visualizzazione</th>
+                <th>Elimina</th>
+            </tr>
+            {% for reparto_id, reparto_nome, ip_address, visibile_ritira, visibile_qr, visualizza_cronologia, visualizza_qrcode in reparti %}
+            <tr>
+                <td>{{ reparto_nome }}</td>
+                <td>
+                    <form method="POST">
+                        <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+                        <input type="text" name="nuovo_ip"
+                               value="{{ ip_address if ip_address else '' }}"
+                               placeholder="Nessuna stampante">
+                        <button type="submit" name="azione" value="modifica_ip">Salva</button>
+                    </form>
+                </td>
+                <td>
+                    <form method="POST">
+                        <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+                        <label>
+                            <input type="checkbox" name="visibile_ritira"
+                                   {% if visibile_ritira %}checked{% endif %}
+                                   onchange="this.form.submit()"> Ritira
+                        </label>
+                        <br>
+                        <label>
+                            <input type="checkbox" name="visibile_qr"
+                                   {% if visibile_qr %}checked{% endif %}
+                                   onchange="this.form.submit()"> QR
+                        </label>
+                        <input type="hidden" name="azione" value="modifica_visibilita">
+                    </form>
+                </td>
+                <td>
+                    <form method="POST">
+                        <input type="hidden" name="reparto_id" value="{{ reparto_id }}">
+                        <label>
+                            <input type="checkbox" name="visualizza_cronologia"
+                                   {% if visualizza_cronologia %}checked{% endif %}
+                                   onchange="this.form.submit()"> Cronologia
+                        </label>
+                        <br>
+                        <label>
+                            <input type="checkbox" name="visualizza_QRcode"
+                                   {% if visualizza_qrcode %}checked{% endif %}
+                                   onchange="this.form.submit()"> QRcode
+                        </label>
+                        <input type="hidden" name="azione" value="modifica_visualizzazione">
+                    </form>
+                </td>
+                <td>
+                    <form method="POST">
+                        <input type="hidden" name="elimina_reparto" value="{{ reparto_id }}">
+                        <button type="submit" class="btn-delete" name="azione" value="elimina_reparto">
+                            Elimina
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <!-- IMMAGINI -->
+    <div class="section">
+        <h3>Immagini Cliente</h3>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="immagine_file" accept="image/*" required>
+            <button type="submit" name="azione" value="aggiungi_immagine">Carica Immagine</button>
+        </form>
+
+        {% if immagini %}
+            <table style="margin-top:15px;">
+                <tr>
+                    <th>Anteprima</th>
+                    <th>Percorso</th>
+                    <th>Elimina</th>
+                </tr>
+                {% for img_id, img_url in immagini %}
+                <tr>
+                    <td>
+                        <img src="{{ img_url }}" class="preview">
+                    </td>
+                    <td>{{ img_url }}</td>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="immagine_id" value="{{ img_id }}">
+                            <button type="submit" class="btn-delete" name="azione" value="elimina_immagine">
+                                Elimina
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>Nessuna immagine caricata.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+</body>
+</html>
