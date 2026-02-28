@@ -267,12 +267,10 @@ def dashboard_user():
     user_id = session["user_id"]
     db = Database()
 
-    # Recupera le licenze dell'utente
     licenze = db.execute_query(
         "SELECT tipo, data_scadenza FROM licenze WHERE id_utente = %s", (user_id,)
     )
 
-    # Controlla se le licenze specifiche sono attive
     eliminacode_attiva = any(licenza[0] == "eliminacode" for licenza in licenze)
     prenotazioni_attiva = any(licenza[0] == "prenotazioni" for licenza in licenze)
 
@@ -280,6 +278,7 @@ def dashboard_user():
     return render_template(
         "dashboard_user.html",
         username=session["username"],
+        user_id=user_id,                 # 👈 AGGIUNTO
         licenze=licenze,
         eliminacode_attiva=eliminacode_attiva,
         prenotazioni_attiva=prenotazioni_attiva
@@ -944,6 +943,8 @@ def eliminacode_redirect():
 
     # prendo l'id dalla sessione e reindirizzo alla route corretta
     return redirect(url_for("eliminacode", user_id=session["user_id"]))
+    
+    
 @app.route("/gestisci_prenotazioni/<int:user_id>", methods=["GET", "POST"])
 def gestisci_prenotazioni(user_id):
     if not session.get("is_admin"):
