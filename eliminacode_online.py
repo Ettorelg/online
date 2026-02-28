@@ -281,8 +281,8 @@ def gestione_eliminacode():
     if "user_id" not in session:
         return redirect("/login")
     
-    return render_template("gestione_eliminacode.html")
-
+    user_id = session["user_id"]
+    return render_template("gestione_eliminacode.html", user_id=user_id)
 from flask import jsonify
 
 @app.route("/gestione_prenotazioni")
@@ -1260,12 +1260,21 @@ def get_ticket_data(reparto_id):
 
 @app.route("/api/get_ticket", methods=["GET"])
 def get_ticket():
-    reparto_id = request.args.get("reparto_id")  # Riceviamo l'ID del reparto dalla richiesta
+    reparto_id = request.args.get("reparto_id")
     if not reparto_id:
-        return jsonify({"success": False, "error": "Nessun ID reparto specificato"})
+        return jsonify({"success": False})
 
-    print(f"📢 DEBUG: Richiesta ricevuta per reparto ID {reparto_id}")  # <-- Aggiunto per debug
-    return jsonify(get_ticket_data(reparto_id))
+    data = get_ticket_data(reparto_id)
+
+    if data["success"] and data["ip_stampante"]:
+        stampa_ticket_termico(
+            data["reparto"],
+            data["numero_ticket"],
+            data["ip_stampante"]
+        )
+
+    return jsonify(data)
+
 
 @app.route("/download/<filename>")
 def download_file(filename):
