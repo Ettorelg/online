@@ -773,6 +773,171 @@ def gestisci_eliminacode(user_id):
         immagini=immagini
     )
 
+@app.route("/eliminacode/<int:user_id>", methods=["GET", "POST"])
+def eliminacode(user_id):
+
+    # Deve essere loggato
+    if "user_id" not in session:
+        return redirect("/login")
+
+    # Può modificare solo il proprio account
+    if session["user_id"] != user_id:
+        return redirect("/login")
+
+    db = Database()
+
+    # -------------------------
+    # POST (AZIONI)
+    # -------------------------
+    if request.method == "POST":
+        azione = request.form.get("azione")
+
+        # -------- REPARTI --------
+        if azione == "aggiungi_reparto":
+            nome_reparto = request.form.get("nuovo_reparto", "").strip()
+            ip_reparto = request.form.get("ip_reparto", "").strip()
+            visibile_ritira = request.form.get("visibile_ritira", "off") == "on"
+            visibile_qr = request.form.get("visibile_qr", "off") == "on"
+
+            if nome_reparto:
+                db.execute_query(
+                    """
+                    INSERT INTO reparti (nome, ip_address, id_licenza, visibile_ritira, visibile_qr)
+                    VALUES (
+                        %s,
+                        NULLIF(%s, ''),
+                        (SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'),
+                        %s,
+                        %s
+                    )
+                    """,
+                    (nome_reparto, ip_reparto, user_id, visibile_ritira, visibile_qr),
+                    commit=True
+                )
+
+                reparto_id = db.execute_query(
+                    """
+                    SELECT id FROM reparti
+                    WHERE nome = %s
+                    ORDER BY id DESC LIMIT 1
+                    """,
+                    (nome_reparto,)
+                )[0][0]
+
+                db.execute_query(
+                    "INSERT INTO ticket_reparto (id_reparto, numero_attuale, numero_massimo) VALUES (%s, 0, 0)",
+                    (reparto_id,),
+                    commit=True
+                )
+
+        elif azione == "modifica_ip":
+            reparto_id = request.form.get("reparto_id")
+            nuovo_ip = request.form.get("nuovo_ip", "").strip()
+            db.execute_query(
+                "UPDATE reparti SET ip_address = NULLIF(%s, '') WHERE id = %s",
+                (nuovo_ip, reparto_id),
+                commit=True
+            )
+
+        elif azione == "modifica_visibilita":
+            reparto_id = request.form.get("reparto_id")
+            visibile_ritira = request.form.get("visibile_ritira", "off") == "on"
+            visibile_qr = request.form.get("visibile_qr", "off") == "on"
+
+            db.execute_query(
+                "UPDATE reparti SET visibile_ritira = %s, visibile_qr = %s WHERE id = %s",
+                (visibile_ritira, visibile_qr, reparto_id),
+                commit=True
+            )
+
+        elif azione == "modifica_visualizzazione":
+            reparto_id = request.form.get("reparto_id")
+            vis_cron = request.form.get("visualizza_cronologia") == "on"
+            vis_qr = request.form.get("visualizza_QRcode") == "on"
+
+            db.execute_query(
+                "UPDATE reparti SET visualizza_cronologia = %s, visualizza_qrcode = %s WHERE id = %s",
+                (vis_cron, vis_qr, reparto_id),
+                commit=True
+            )
+
+        elif azione == "elimina_reparto":
+            reparto_id = request.form.get("elimina_reparto")
+            db.execute_query(
+                "DELETE FROM reparti WHERE id = %s",
+                (reparto_id,),
+                commit=True
+            )
+
+        # -------- IMMAGINI --------
+        elif azione == "aggiungi_immagine":
+            file = request.files.get("immagine_file")
+            if file and allowed_file(file.filename):
+                ext = file.filename.rsplit(".", 1)[1].lower()
+                new_name = f"user{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], new_name)
+                file.save(save_path)
+
+                relative_url = f"/static/{new_name}"
+
+                db.execute_query(
+                    "INSERT INTO immagini_utenti (id_utente, immagine_url) VALUES (%s, %s)",
+                    (user_id, relative_url),
+                    commit=True
+                )
+
+        elif azione == "elimina_immagine":
+            immagine_id = request.form.get("immagine_id")
+
+            row = db.execute_query(
+                "SELECT immagine_url FROM immagini_utenti WHERE id = %s AND id_utente = %s",
+                (immagine_id, user_id)
+            )
+
+            if row:
+                img_url = row[0][0]
+                file_path = os.path.join(app.root_path, img_url.lstrip("/"))
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+
+                db.execute_query(
+                    "DELETE FROM immagini_utenti WHERE id = %s AND id_utente = %s",
+                    (immagine_id, user_id),
+                    commit=True
+                )
+
+        db.close()
+        return redirect(f"/eliminacode/{user_id}")
+
+    # -------------------------
+    # GET (CARICAMENTO PAGINA)
+    # -------------------------
+    reparti = db.execute_query(
+        """
+        SELECT id, nome, ip_address, visibile_ritira, visibile_qr,
+               visualizza_cronologia, visualizza_qrcode
+        FROM reparti
+        WHERE id_licenza = (
+            SELECT id FROM licenze WHERE id_utente = %s AND tipo = 'eliminacode'
+        )
+        """,
+        (user_id,)
+    )
+
+    immagini = db.execute_query(
+        "SELECT id, immagine_url FROM immagini_utenti WHERE id_utente = %s",
+        (user_id,)
+    )
+
+    db.close()
+
+    return render_template(
+        "eliminacode.html",
+        user_id=user_id,
+        reparti=reparti,
+        immagini=immagini
+    )
+
 @app.route("/gestisci_prenotazioni/<int:user_id>", methods=["GET", "POST"])
 def gestisci_prenotazioni(user_id):
     if not session.get("is_admin"):
