@@ -127,10 +127,36 @@
                 width: 100%;
             }
         }
+		.btn-back-floating {
+			position: fixed;
+			top: 20px;
+			left: 20px;
+
+			padding: 10px 16px;
+			background: #dc3545;
+			color: white;
+			border: none;
+			border-radius: 8px;
+			cursor: pointer;
+			font-weight: bold;
+
+			box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+			z-index: 999;
+			transition: 0.2s ease-in-out;
+		}
+
+		.btn-back-floating:hover {
+			background: #c82333;
+			transform: translateY(-2px);
+		}
     </style>
 </head>
 <body>
+<body>
 
+<button class="btn-back-floating" onclick="window.location.href='/dashboard_user'">
+    ← Dashboard
+</button>
 <div class="container">
 
     <h2>Gestione Eliminacode</h2>
@@ -153,9 +179,7 @@
             (VISUALIZZA) Ticket Cronologia
         </button>
 
-        <button class="btn-back" onclick="window.location.href='/dashboard_user'">
-            Torna alla Dashboard
-        </button>
+
     </div>
 
     <!-- CONFIGURAZIONE REPARTI -->
@@ -250,7 +274,6 @@
             <table style="margin-top:15px;">
                 <tr>
                     <th>Anteprima</th>
-                    <th>Percorso</th>
                     <th>Elimina</th>
                 </tr>
                 {% for img_id, img_url in immagini %}
@@ -258,7 +281,6 @@
                     <td>
                         <img src="{{ img_url }}" class="preview">
                     </td>
-                    <td>{{ img_url }}</td>
                     <td>
                         <form method="POST">
                             <input type="hidden" name="immagine_id" value="{{ img_id }}">
