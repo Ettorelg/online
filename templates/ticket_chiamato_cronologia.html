@@ -232,6 +232,20 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 			overflow-y: hidden;
 			display: flex;
 			flex-direction: column;
+
+			/* 👇 Effetto fade negli ultimi 15px */
+			-webkit-mask-image: linear-gradient(
+				to bottom,
+				black 0%,
+				black calc(100% - 15px),
+				transparent 100%
+			);
+			mask-image: linear-gradient(
+				to bottom,
+				black 0%,
+				black calc(100% - 15px),
+				transparent 100%
+			);
 		}
 
 		.history-title {
