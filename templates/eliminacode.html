@@ -178,10 +178,13 @@
         <button class="btn-ritirato" onclick="window.location.href='/ticket_chiamato_cronologia?user={{ user_id }}'">
             (VISUALIZZA) Ticket Cronologia
         </button>
+		<button class="btn-ticket" onclick="toggleConfig()">
+			⚙ Modifica Configurazione
+		</button>
 
 
     </div>
-
+<div id="configSection" style="display: none;">
     <!-- CONFIGURAZIONE REPARTI -->
     <div class="section">
         <h3>Aggiungi Reparto</h3>
@@ -296,8 +299,20 @@
             <p>Nessuna immagine caricata.</p>
         {% endif %}
     </div>
-
+</div> <!-- fine configSection -->
 </div>
 
 </body>
 </html>
+<script>
+function toggleConfig() {
+    const section = document.getElementById("configSection");
+
+    if (section.style.display === "none") {
+        section.style.display = "block";
+        section.scrollIntoView({ behavior: "smooth" });
+    } else {
+        section.style.display = "none";
+    }
+}
+</script>
