@@ -1,5 +1,3 @@
-import os
-import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
@@ -9,8 +7,13 @@ import uuid
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
+
+# 🔌 inizializza Socket.IO (MANCAVA!)
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+
 # 📂 Cartella upload (persistente, montata come volume su Railway)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
