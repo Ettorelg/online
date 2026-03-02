@@ -211,10 +211,13 @@
             }
 
             fetch("/gestione_ticket", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `reparto=${repartoId}&azione=imposta&nuovo_numero=${nuovoNumero}`
-            }).then(response => response.json())
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+					"X-Requested-With": "XMLHttpRequest"
+				},
+				body: `reparto=${repartoId}&azione=imposta&nuovo_numero=${encodeURIComponent(nuovo_numero)}`
+			}).then(response => response.json())
             .then(data => {
                 if (data.success) {
                     document.getElementById("ticket-" + repartoId).innerText = nuovoNumero;
@@ -261,13 +264,16 @@
 			// ripristina
 			el.value = el.getAttribute("data-last") || 0;
 			return;
-		  }
+			}
 
-		  fetch("/gestione_ticket", {
+		fetch("/gestione_ticket", {
 			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				"X-Requested-With": "XMLHttpRequest"
+			},
 			body: `reparto=${repartoId}&azione=imposta&nuovo_numero=${encodeURIComponent(nuovoNumero)}`
-		  }).then(r => r.json())
+		}).then(r => r.json())
 			.then(data => {
 			  if (data.success) {
 				el.value = nuovoNumero;
