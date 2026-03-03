@@ -1186,11 +1186,6 @@ def ritira_ticket():
                 "ip_stampante": ip_stampante
             }
 
-            if ip_stampante:
-                success = stampa_ticket_termico(reparto_nome, ticket_number, ip_stampante)
-                if not success:
-                    response_data["success"] = False
-                    response_data["message"] = "Errore nella stampa del ticket"
 
             return jsonify(response_data)
 
@@ -1583,12 +1578,13 @@ def get_ticket():
 
     data = get_ticket_data(reparto_id)
 
-    if data["success"] and data["ip_stampante"]:
-        stampa_ticket_termico(
-            data["reparto"],
-            data["numero_ticket"],
-            data["ip_stampante"]
-        )
+    # 🔴 PER ORA DISATTIVA LA STAMPA SERVER
+    # if data["success"] and data["ip_stampante"]:
+    #     stampa_ticket_termico(
+    #         data["reparto"],
+    #         data["numero_ticket"],
+    #         data["ip_stampante"]
+    #     )
 
     return jsonify(data)
 
