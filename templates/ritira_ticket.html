@@ -222,25 +222,34 @@ function prendiTicket(repartoId) {
     fetch(`/api/get_ticket?reparto_id=${repartoId}`)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                const ip = data.ip_stampante;
-                const repartoNome = data.reparto;
-                const ticketNumber = data.numero_ticket;
+            console.log("📩 Risposta /api/get_ticket:", data);
 
-                console.log("✅ Ticket ricevuto:", ip, repartoNome, ticketNumber);
+            if (!data.success) {
+                alert(data.message || "Errore nel recupero del ticket.");
+                return;
+            }
 
-                if (!ip) {
-                    alert("❌ Nessuna stampante associata a questo reparto!");
-                    return;
-                }
+            const ip           = data.ip_stampante;
+            const repartoNome  = data.reparto;
+            const ticketNumber = data.numero_ticket;
 
-                if (typeof window.Android !== "undefined" && typeof window.Android.printTicket === "function") {
-                    window.Android.printTicket(ip, repartoNome, ticketNumber);
-                } else {
-                    alert("⚠️ Errore: interfaccia Android non trovata!");
-                }
+            if (!ip) {
+                alert("❌ Nessuna stampante associata a questo reparto!");
+                return;
+            }
+
+            // Cast esplicito a stringhe per evitare problemi di firma
+            const ipStr      = String(ip);
+            const repartoStr = String(repartoNome);
+            const ticketStr  = String(ticketNumber);
+
+            console.log("✅ Ticket ricevuto:", ipStr, repartoStr, ticketStr);
+            console.log("Tipo Android:", typeof window.Android);
+
+            if (window.Android && typeof window.Android.printTicket === "function") {
+                window.Android.printTicket(ipStr, repartoStr, ticketStr);
             } else {
-                alert("Errore nel recupero del ticket.");
+                alert("⚠️ Interfaccia Android non trovata (sei nel browser, non in app?)");
             }
         })
         .catch(error => {
@@ -248,7 +257,6 @@ function prendiTicket(repartoId) {
             alert("Errore di connessione al server.");
         });
 }
-
 
 document.addEventListener("DOMContentLoaded", function () {
     const qrDiv = document.getElementById("qrcode");
