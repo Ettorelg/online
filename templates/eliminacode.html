@@ -314,7 +314,25 @@
             {% endfor %}
         </table>
     </div>
+	<!-- LOGO -->
+	<div class="section">
+		<h3>Logo Cliente</h3>
 
+		<form method="POST" enctype="multipart/form-data">
+			<input type="file" name="logo_file" accept="image/*" required>
+			<button type="submit" name="azione" value="carica_logo">Carica Logo</button>
+		</form>
+
+		{% if logo_url %}
+			<p style="margin-top:10px;">Logo attuale:</p>
+			<img src="{{ logo_url }}" class="preview">
+			<form method="POST" style="margin-top:10px;">
+				<button type="submit" class="btn-delete" name="azione" value="elimina_logo">Elimina Logo</button>
+			</form>
+		{% else %}
+			<p>Nessun logo caricato.</p>
+		{% endif %}
+	</div>
     <!-- IMMAGINI -->
     <div class="section">
         <h3>Immagini Cliente</h3>
