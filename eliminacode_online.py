@@ -27,12 +27,27 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 # Estensioni consentite
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+LOGO_FOLDER = os.path.join(BASE_DIR, "static", "logo")
+os.makedirs(LOGO_FOLDER, exist_ok=True)
+app.config["LOGO_FOLDER"] = LOGO_FOLDER
 def allowed_file(filename: str) -> bool:
     return (
         "." in filename
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
-  
+ def get_logo_url(user_id: int) -> str | None:
+    # Cerca un file con nome "<user_id>.<ext>" nelle estensioni permesse
+    for ext in ALLOWED_EXTENSIONS:
+        path = os.path.join(app.config["LOGO_FOLDER"], f"{user_id}.{ext}")
+        if os.path.exists(path):
+            return f"/static/logo/{user_id}.{ext}"
+    return None
+
+def delete_logo_file(user_id: int) -> None:
+    for ext in ALLOWED_EXTENSIONS:
+        path = os.path.join(app.config["LOGO_FOLDER"], f"{user_id}.{ext}")
+        if os.path.exists(path):
+            os.remove(path)
 # DB: leggi da env (se non presente, fallback al tuo URL)
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
@@ -699,7 +714,23 @@ def gestisci_eliminacode(user_id):
                 (vis_cron, vis_qr, reparto_id),
                 commit=True
             )
+                # -----------------------
+        # LOGO UTENTE (static/logo/<user_id>.<ext>)
+        # -----------------------
+        elif azione == "carica_logo":
+            file = request.files.get("logo_file")
+            if file and allowed_file(file.filename):
+                ext = file.filename.rsplit(".", 1)[1].lower()
 
+                # elimina eventuali vecchi logo con estensioni diverse
+                delete_logo_file(user_id)
+
+                new_name = f"{user_id}.{ext}"
+                save_path = os.path.join(app.config["LOGO_FOLDER"], new_name)
+                file.save(save_path)
+
+        elif azione == "elimina_logo":
+            delete_logo_file(user_id)
         # -----------------------
         # IMMAGINI UTENTE
         # -----------------------
@@ -717,7 +748,7 @@ def gestisci_eliminacode(user_id):
                 file.save(save_path)
 
                 # URL pubblico da salvare nel DB (usato nel src delle immagini)
-                relative_url = f"/static/{new_name}"
+                relative_url = f"/static/uploads/{new_name}"
 
                 db.execute_query(
                     "INSERT INTO immagini_utenti (id_utente, immagine_url) VALUES (%s, %s)",
@@ -761,6 +792,7 @@ def gestisci_eliminacode(user_id):
         """,
         (user_id,)
     )
+    logo_url = get_logo_url(user_id)
 
     file_reparto = {
         reparto[0]: db.execute_query(
@@ -782,7 +814,8 @@ def gestisci_eliminacode(user_id):
         user_id=user_id,
         reparti=reparti,
         file_reparto=file_reparto,
-        immagini=immagini
+        immagini=immagini,
+        logo_url=logo_url
     )
     
 @app.route("/eliminacode/<int:user_id>", methods=["GET", "POST"])
@@ -882,7 +915,20 @@ def eliminacode(user_id):
                 (reparto_id,),
                 commit=True
             )
+                # -------- LOGO --------
+        elif azione == "carica_logo":
+            file = request.files.get("logo_file")
+            if file and allowed_file(file.filename):
+                ext = file.filename.rsplit(".", 1)[1].lower()
 
+                delete_logo_file(user_id)
+
+                new_name = f"{user_id}.{ext}"
+                save_path = os.path.join(app.config["LOGO_FOLDER"], new_name)
+                file.save(save_path)
+
+        elif azione == "elimina_logo":
+            delete_logo_file(user_id)
         # -------- IMMAGINI --------
         elif azione == "aggiungi_immagine":
             file = request.files.get("immagine_file")
@@ -947,11 +993,13 @@ def eliminacode(user_id):
     )
 
     db.close()
+    logo_url = get_logo_url(user_id)
     return render_template(
         "eliminacode.html",
         user_id=user_id,
         reparti=reparti,
-        immagini=immagini
+        immagini=immagini,
+        logo_url=logo_url
     )
 @app.route("/eliminacode")
 def eliminacode_redirect():
