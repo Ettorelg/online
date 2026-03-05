@@ -607,7 +607,7 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 
     <!-- Logo Alto -->
     <div class="logo-top">
-        <img src="/static/logo/{{ user_id }}.png" alt="Logo Alto">
+        <img src="/static/logo/{{ user_id }}.png" onerror="this.src='/static/logo_bottom.png'">
     </div>
 
     <!-- Cronologia -->
