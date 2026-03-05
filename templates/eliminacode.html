@@ -373,14 +373,34 @@
 </body>
 </html>
 <script>
-function toggleConfig() {
-    const section = document.getElementById("configSection");
-
-    if (section.style.display === "none") {
-        section.style.display = "block";
-        section.scrollIntoView({ behavior: "smooth" });
-    } else {
-        section.style.display = "none";
-    }
+function setConfigOpen(isOpen) {
+  const section = document.getElementById("configSection");
+  section.style.display = isOpen ? "block" : "none";
+  sessionStorage.setItem("configOpen", isOpen ? "1" : "0");
 }
+
+function toggleConfig() {
+  const section = document.getElementById("configSection");
+  const isOpen = section.style.display !== "none";
+  setConfigOpen(!isOpen);
+
+  if (!isOpen) {
+    section.scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Ripristina stato (default: chiusa)
+  const open = sessionStorage.getItem("configOpen") === "1";
+  setConfigOpen(open);
+
+  // Se fai submit da dentro configSection, dopo il click chiudila
+  const configSection = document.getElementById("configSection");
+  configSection.querySelectorAll("form").forEach(form => {
+    form.addEventListener("submit", () => {
+      // chiude subito prima del reload (così dopo il reload resta chiusa)
+      sessionStorage.setItem("configOpen", "0");
+    });
+  });
+});
 </script>
