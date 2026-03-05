@@ -467,29 +467,30 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
         setTimeout(() => element.classList.remove("highlight"), 15000);
     }
 
-    socket.on("update_tickets", function(numeri) {
-        for (var reparto in numeri) {
-            var ticketElement = document.getElementById("ticket-" + reparto);
-            if (ticketElement) {
-                var oldNumber = ticketElement.innerText;
-                ticketElement.innerText = numeri[reparto];
 
-                if (oldNumber != numeri[reparto]) {
-                    highlightNumber(ticketElement);
-                    announceNumber(numeri[reparto], ticketElement.dataset.reparto);
-                }
-            }
-        }
-		loadHistory(); // <— aggiungi questa riga alla fine
-    });
+	socket.on("update_tickets", function(numeri) {
+	  for (const reparto_id in numeri) {
+		const ticketElement = document.getElementById("ticket-" + reparto_id);
+		if (!ticketElement) continue;
+
+		const oldNumber = ticketElement.innerText;
+		ticketElement.innerText = numeri[reparto_id];
+
+		if (oldNumber != numeri[reparto_id]) {
+		  highlightNumber(ticketElement);
+		  announceNumber(numeri[reparto_id], ticketElement.dataset.reparto);
+		}
+	  }
+	  loadHistory(50);
+	});
 // 👇 SOSTITUISCI la funzione
 	async function loadHistory(limit = 10) {
 	  try {
 		const cacheBust = Date.now();
-		const user = new URLSearchParams(window.location.search).get("user");
 		const res = await fetch(`/api/cronologia_utente?user=${user}&limit=${limit}&_=${cacheBust}`);
 
-		socket.emit("join", { room: "user_" + user });
+		const user = new URLSearchParams(window.location.search).get("user");
+		if (user) socket.emit("join", { room: "user_" + user });
 
 		const data = await res.json();
 
@@ -535,30 +536,6 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 	  }
 	}
 
-	// Avvio + (facoltativo) polling
-	document.addEventListener("DOMContentLoaded", function () {
-	  loadHistory(50);
-	  setInterval(loadHistory, 15000); // opzionale
-	});
-
-
-	// aggiorna la cronologia quando arrivano nuove chiamate
-	socket.on("update_tickets", function() { loadHistory(); });
-
-	// avvio + polling leggero
-	document.addEventListener("DOMContentLoaded", function () {
-	  loadHistory(50);
-	  setInterval(loadHistory, 15000);
-	});
-
-
-	// Aggiorna cronologia quando cambia un ticket
-	socket.on("update_tickets", function() { loadHistory(); });
-
-	setInterval(loadHistory, 15000); // refresh ogni 15s
-	document.addEventListener("DOMContentLoaded", loadHistory);
-
-
 
 
     function testVoice() {
@@ -575,37 +552,39 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        let qrContainer = document.getElementById("qrcode");
+	  // --- Cronologia ---
+	  loadHistory(50);
+	  setInterval(() => loadHistory(50), 15000);
 
-        function generateQRCode() {
-            qrContainer.innerHTML = ""; // Svuota il contenitore
-            let size = qrContainer.offsetWidth; // Usa la larghezza massima disponibile
+	  // --- Voce ---
+	  window.speechSynthesis.onvoiceschanged = loadVoices;
+	  setTimeout(loadVoices, 500);
 
-            // 🔹 Ottieni l'ID dell'utente dal backend
-            let userId = "{{ user_id }}";
+	  // --- QR ---
+	  const qrContainer = document.getElementById("qrcode");
+	  if (qrContainer) {
+		function generateQRCode() {
+		  qrContainer.innerHTML = "";
+		  const size = qrContainer.offsetWidth;
+		  const userId = "{{ user_id }}";
 
-            // 🔹 Controllo di sicurezza: Se userId non è valido, non generare il QR Code
-            if (!userId || userId.trim() === "") {
-                console.error("❌ Errore: user_id non è definito.");
-                return;
-            }
+		  if (!userId || userId.trim() === "") {
+			console.error("❌ Errore: user_id non è definito.");
+			return;
+		  }
 
-            // 🔹 Genera il QR Code con l'ID dell'utente
-            new QRCode(qrContainer, {
-                text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
-                width: size,
-                height: size
-            });
+		  new QRCode(qrContainer, {
+			text: window.location.origin + "/ritira_ticket_qr?user=" + userId,
+			width: size,
+			height: size
+		  });
+		}
+		setTimeout(generateQRCode, 100);
+	  }
 
-            console.log("✅ QR Code generato con successo per user_id:", userId);
-        }
-
-        // 🔹 Genera il QR Code dopo il caricamento della pagina
-        setTimeout(generateQRCode, 100);
-
-
-		// Fade immagini: una alla volta
-		const carousel = document.querySelector(".carousel-images");
+	  // --- Carousel ---
+	  const carousel = document.querySelector(".carousel-images");
+	  if (carousel) {
 		const slides = Array.from(carousel.querySelectorAll("img"));
 		let currentIndex = 0;
 
@@ -620,19 +599,12 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 			showSlide(currentIndex);
 		  }, 10000);
 		}
+	  }
 
-
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        setTimeout(loadVoices, 500);
-		const audioModeSelect = document.getElementById("audioMode");
-        if (audioModeSelect) {
-            const saved = getAudioPreference();
-            audioModeSelect.value = saved;
-            // sincronizza icone
-            setAudioMode(saved);
-        }
-
-    });
+	  // --- Audio mode icone ---
+	  const saved = getAudioPreference();
+	  setAudioMode(saved);
+	});
 	
 </script>
 
