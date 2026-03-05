@@ -35,7 +35,7 @@ def allowed_file(filename: str) -> bool:
         "." in filename
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
- def get_logo_url(user_id: int) -> str | None:
+def get_logo_url(user_id: int) -> str | None:
     # Cerca un file con nome "<user_id>.<ext>" nelle estensioni permesse
     for ext in ALLOWED_EXTENSIONS:
         path = os.path.join(app.config["LOGO_FOLDER"], f"{user_id}.{ext}")
