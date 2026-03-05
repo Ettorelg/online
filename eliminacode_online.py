@@ -13,30 +13,50 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
 # 🔌 inizializza Socket.IO (MANCAVA!)
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
 
-# 📂 Cartella upload (persistente, montata come volume su Railway)
+import os
+import shutil
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Volume montato su Railway
+STATIC_DIR  = os.path.join(BASE_DIR, "static")
 
+# File “base” nel repo (NON montati)
+STATIC_SEED = os.path.join(BASE_DIR, "static_seed")
 
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+# Sottocartelle persistenti dentro il volume
+UPLOAD_FOLDER = os.path.join(STATIC_DIR, "uploads")
+LOGO_FOLDER   = os.path.join(STATIC_DIR, "logo")
 
 # Estensioni consentite
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
-LOGO_FOLDER = os.path.join(BASE_DIR, "static", "logo")
+def seed_static_files():
+    os.makedirs(STATIC_DIR, exist_ok=True)
+
+    if not os.path.isdir(STATIC_SEED):
+        # nessun seed disponibile: ok, ma i file base non verranno copiati
+        return
+
+    for name in ["logo_top.png", "logo_bottom.png", "ding.mp3"]:
+        src = os.path.join(STATIC_SEED, name)
+        dst = os.path.join(STATIC_DIR, name)
+        if os.path.exists(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
+
+seed_static_files()
+
+# crea sottocartelle persistenti
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOGO_FOLDER, exist_ok=True)
-app.config["LOGO_FOLDER"] = LOGO_FOLDER
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["LOGO_FOLDER"]   = LOGO_FOLDER
+
 def allowed_file(filename: str) -> bool:
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-    )
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 def get_logo_url(user_id: int) -> str | None:
-    # Cerca un file con nome "<user_id>.<ext>" nelle estensioni permesse
     for ext in ALLOWED_EXTENSIONS:
         path = os.path.join(app.config["LOGO_FOLDER"], f"{user_id}.{ext}")
         if os.path.exists(path):
@@ -48,7 +68,6 @@ def delete_logo_file(user_id: int) -> None:
         path = os.path.join(app.config["LOGO_FOLDER"], f"{user_id}.{ext}")
         if os.path.exists(path):
             os.remove(path)
-# DB: leggi da env (se non presente, fallback al tuo URL)
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
     "postgresql://postgres:xYYqHsLowEKfQarulXBolqWgHnMNTNgO@trolley.proxy.rlwy.net:34653/railway"
