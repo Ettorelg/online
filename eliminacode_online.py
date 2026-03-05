@@ -12,33 +12,28 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersecretkey")
 
 # 🔌 inizializza Socket.IO (MANCAVA!)
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
-
-import os
-import shutil
+import os, shutil
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Volume montato su Railway
-STATIC_DIR  = os.path.join(BASE_DIR, "static")
+# Volume montato su Railway (persistente)
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
-# File “base” nel repo (NON montati)
+# Cartella nel repo (NON persistente) con i file base
 STATIC_SEED = os.path.join(BASE_DIR, "static_seed")
 
-# Sottocartelle persistenti dentro il volume
-UPLOAD_FOLDER = os.path.join(STATIC_DIR, "uploads")
-LOGO_FOLDER   = os.path.join(STATIC_DIR, "logo")
+# Sottocartelle persistenti DENTRO static/
+UPLOADS_FOLDER = os.path.join(STATIC_DIR, "uploads")   # carousel immagini
+LOGO_FOLDER    = os.path.join(STATIC_DIR, "upload")    # logo utente: /static/upload/<id>.png
 
-# Estensioni consentite
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 def seed_static_files():
     os.makedirs(STATIC_DIR, exist_ok=True)
-
     if not os.path.isdir(STATIC_SEED):
-        # nessun seed disponibile: ok, ma i file base non verranno copiati
         return
 
-    for name in ["logo_top.png", "logo_bottom.png", "ding.mp3"]:
+    for name in ["logo_top.png", "logo_bottom.png", "ding.mp3", "background.png"]:
         src = os.path.join(STATIC_SEED, name)
         dst = os.path.join(STATIC_DIR, name)
         if os.path.exists(src) and not os.path.exists(dst):
@@ -46,22 +41,25 @@ def seed_static_files():
 
 seed_static_files()
 
-# crea sottocartelle persistenti
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOADS_FOLDER, exist_ok=True)
 os.makedirs(LOGO_FOLDER, exist_ok=True)
 
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["LOGO_FOLDER"]   = LOGO_FOLDER
+app.config["UPLOAD_FOLDER"] = UPLOADS_FOLDER
+app.config["LOGO_FOLDER"] = LOGO_FOLDER
+
 
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 def get_logo_url(user_id: int) -> str | None:
+    # /static/upload/<id>.<ext>
     for ext in ALLOWED_EXTENSIONS:
         path = os.path.join(app.config["LOGO_FOLDER"], f"{user_id}.{ext}")
         if os.path.exists(path):
-            return f"/static/logo/{user_id}.{ext}"
+            return f"/static/upload/{user_id}.{ext}"
     return None
+
 
 def delete_logo_file(user_id: int) -> None:
     for ext in ALLOWED_EXTENSIONS:
