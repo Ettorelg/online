@@ -387,7 +387,7 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 		secure: true,
 		reconnection: true
 	});
-
+	const USER_ID = new URLSearchParams(window.location.search).get("user");
 	function getUserIdFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get("user");
@@ -487,11 +487,10 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 	async function loadHistory(limit = 10) {
 	  try {
 		const cacheBust = Date.now();
-		const res = await fetch(`/api/cronologia_utente?user=${user}&limit=${limit}&_=${cacheBust}`);
 
-		const user = new URLSearchParams(window.location.search).get("user");
-		if (user) socket.emit("join", { room: "user_" + user });
+		if (!USER_ID) return;
 
+		const res = await fetch(`/api/cronologia_utente?user=${USER_ID}&limit=${limit}&_=${cacheBust}`);
 		const data = await res.json();
 
 		const ul = document.getElementById("historyList");
@@ -499,12 +498,11 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 
 		ul.innerHTML = "";
 		data.slice(0, 10).forEach(item => {
-		  // Ora IT con +1h, robusta a ISO o "HH:MM"
 		  let displayTime = "";
 		  if (item.created_at) {
 			const d = new Date(item.created_at);
 			if (!isNaN(d)) {
-			  d.setHours(d.getHours() + 1); // +1 ora
+			  d.setHours(d.getHours() + 1);
 			  displayTime = new Intl.DateTimeFormat("it-IT", {
 				hour: "2-digit",
 				minute: "2-digit",
@@ -512,14 +510,11 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 			  }).format(d);
 			}
 		  }
-		  if (!displayTime) {
-			if (item.ora && item.ora.includes(":")) {
-			  let [h, m] = item.ora.split(":");
-			  h = (parseInt(h, 10) + 1) % 24; // fallback +1h su stringa HH:MM
-			  displayTime = `${String(h).padStart(2, "0")}:${m}`;
-			} else {
-			  displayTime = ""; // fallback finale
-			}
+
+		  if (!displayTime && item.ora && item.ora.includes(":")) {
+			let [h, m] = item.ora.split(":");
+			h = (parseInt(h, 10) + 1) % 24;
+			displayTime = `${String(h).padStart(2, "0")}:${m}`;
 		  }
 
 		  const li = document.createElement("li");
@@ -535,8 +530,6 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
 		console.error("Errore fetch cronologia:", e);
 	  }
 	}
-
-
 
     function testVoice() {
         let mode = getAudioPreference();
