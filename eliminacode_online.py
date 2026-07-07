@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory,send_file, request
 from escpos.printer import Network
 from gtts import gTTS
+import asyncio
 from werkzeug.utils import secure_filename
 import uuid
 
@@ -307,28 +308,38 @@ def dashboard_admin():
 
 
 @app.route("/api/tts_audio")
-def tts_audio():
+async def tts_audio():
     # Recupera il testo inviato dal monitor
     testo = request.args.get("text", "Nuovo numero")
     
-    # Cartella temporanea per il file audio
+    # Cartella temporanea compatibile anche con Railway
     audio_path = "/tmp/annuncio_eliminacode.mp3"
     
+    # Scegli la voce femminile neurale italiana:
+    # Opzione A: "it-IT-ElsaNeural" (Consigliata: calda e fluida)
+    # Opzione B: "it-IT-IsabellaNeural" (Stile annunciatrice)
+    VOCE_FEMMINILE = "it-IT-ElsaNeural"
+    
     try:
-        # Rimuoviamo eventuali file vecchi per evitare che la Fire Stick riproduca una vecchia traccia della cache
+        # Rimuove il vecchio file se presente per evitare conflitti di scrittura
         if os.path.exists(audio_path):
             os.remove(audio_path)
             
-        # Genera il parlato specificando "it" (italiano nativo di Google, che usa la firma vocale femminile di base)
-        tts = gTTS(text=testo, lang="it", slow=False)
-        tts.save(audio_path)
+        # Inizializza il motore TTS di Microsoft con la voce neurale scelta
+        communicate = edge_tts.Communicate(testo, VOCE_FEMMINILE)
         
-        # Invia l'MP3 con la voce femminile al browser
+        # Salva l'MP3 in modo asincrono nella cartella temporanea
+        await communicate.save(audio_path)
+        
+        # Invia l'MP3 pronto e cristallino alla Fire Stick
         return send_file(audio_path, mimetype="audio/mp3")
+        
     except Exception as e:
-        print(f"Errore generazione voce sul server: {e}")
-        # Fallback in caso di errore
+        print(f"Errore generazione voce neurale sul server: {e}")
+        # Se c'è un errore di rete, invia il ding classico come ruota di scorta
         return send_file(os.path.join(app.root_path, "static", "ding.mp3"), mimetype="audio/mp3")
+        
+        
 @app.route("/dashboard_user")
 def dashboard_user():
     if "user_id" not in session:
