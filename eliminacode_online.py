@@ -2,8 +2,9 @@ import os
 import psycopg2
 from flask_socketio import SocketIO, emit
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory
+from flask import Flask, render_template, request, redirect, session, jsonify, send_from_directory,send_file, request
 from escpos.printer import Network
+from gtts import gTTS
 from werkzeug.utils import secure_filename
 import uuid
 
@@ -304,6 +305,26 @@ def dashboard_admin():
     db.close()
     return render_template("dashboard_admin.html", utenti=utenti, licenze=licenze)
 
+
+@app.route("/api/tts_audio")
+def tts_audio():
+    # Recupera il testo inviato dal monitor (es. "Serviamo il reparto Cassa numero 5")
+    testo = request.args.get("text", "Nuovo numero")
+    
+    # Cartella temporanea compatibile anche con Railway
+    audio_path = "/tmp/annuncio_eliminacode.mp3"
+    
+    try:
+        # Genera il file parlato usando la voce italiana di Google
+        tts = gTTS(text=testo, lang="it", slow=False)
+        tts.save(audio_path)
+        
+        # Invia l'MP3 pronto al browser della Fire Stick
+        return send_file(audio_path, mimetype="audio/mp3")
+    except Exception as e:
+        print(f"Errore generazione voce sul server: {e}")
+        # Se Google fallisce, invia il ding classico come ruota di scorta
+        return send_file(os.path.join(app.root_path, "static", "ding.mp3"), mimetype="audio/mp3")
 @app.route("/dashboard_user")
 def dashboard_user():
     if "user_id" not in session:
