@@ -448,17 +448,45 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
         console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
     }
 
+    // Unico lettore audio per la voce, evita di intasare la memoria della Fire Stick
+    var ttsAudioPlayer = new Audio();
+
     function announceNumber(number, reparto) {
         let mode = getAudioPreference();
 
-        if (mode === "synth" && 'speechSynthesis' in window) {
-            var msg = new SpeechSynthesisUtterance("Serviamo il " +reparto+ " " + number);
-            msg.voice = selectedVoice;
-            msg.rate = 0.7;
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
+        if (mode === "synth") {
+            // Crea la frase parlata in italiano
+            let testoFrase = "Serviamo il " + reparto + " numero " + number;
+            
+            // Crea l'URL per l'API Python inserendo il testo protetto (es. spazi -> %20)
+            let urlCompleto = "/api/tts_audio?text=" + encodeURIComponent(testoFrase) + "&_nocache=" + Date.now();
+            
+            console.log("🔊 Richiesta file audio parlato al server:", testoFrase);
+            
+            // Assegna l'MP3 dinamico al lettore e lo avvia
+            ttsAudioPlayer.src = urlCompleto;
+            ttsAudioPlayer.play().catch(error => {
+                console.error("Autoplay bloccato da Fully Kiosk, provo il fallback audio:", error);
+                playAudioFallback();
+            });
         } else {
-            audio.play().catch(error => console.log("Errore nella riproduzione audio:", error));
+            playAudioFallback();
+        }
+    }
+
+    function playAudioFallback() {
+        // Riproduce il ding classico se la modalità è impostata su file o se il TTS fallisce
+        audio.play().catch(error => console.log("Impossibile riprodurre il ding:", error));
+    }
+
+    // Aggiorna anche la funzione del tasto di test in basso
+    function testVoice() {
+        let mode = getAudioPreference();
+        if (mode === "synth") {
+            ttsAudioPlayer.src = "/api/tts_audio?text=" + encodeURIComponent("Sintetizzatore perfettamente funzionante") + "&_ts=" + Date.now();
+            ttsAudioPlayer.play().catch(e => console.log("Errore test audio:", e));
+        } else {
+            playAudioFallback();
         }
     }
 
