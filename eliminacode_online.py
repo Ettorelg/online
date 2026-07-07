@@ -308,22 +308,26 @@ def dashboard_admin():
 
 @app.route("/api/tts_audio")
 def tts_audio():
-    # Recupera il testo inviato dal monitor (es. "Serviamo il reparto Cassa numero 5")
+    # Recupera il testo inviato dal monitor
     testo = request.args.get("text", "Nuovo numero")
     
-    # Cartella temporanea compatibile anche con Railway
+    # Cartella temporanea per il file audio
     audio_path = "/tmp/annuncio_eliminacode.mp3"
     
     try:
-        # Genera il file parlato usando la voce italiana di Google
+        # Rimuoviamo eventuali file vecchi per evitare che la Fire Stick riproduca una vecchia traccia della cache
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+            
+        # Genera il parlato specificando "it" (italiano nativo di Google, che usa la firma vocale femminile di base)
         tts = gTTS(text=testo, lang="it", slow=False)
         tts.save(audio_path)
         
-        # Invia l'MP3 pronto al browser della Fire Stick
+        # Invia l'MP3 con la voce femminile al browser
         return send_file(audio_path, mimetype="audio/mp3")
     except Exception as e:
         print(f"Errore generazione voce sul server: {e}")
-        # Se Google fallisce, invia il ding classico come ruota di scorta
+        # Fallback in caso di errore
         return send_file(os.path.join(app.root_path, "static", "ding.mp3"), mimetype="audio/mp3")
 @app.route("/dashboard_user")
 def dashboard_user():
