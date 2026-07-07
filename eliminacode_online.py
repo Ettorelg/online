@@ -308,35 +308,23 @@ def dashboard_admin():
 
 
 @app.route("/api/tts_audio")
-async def tts_audio():
-    # Recupera il testo inviato dal monitor
+def tts_audio():
+    # Recupera il testo inviato dal monitor (es. "Serviamo il reparto Cassa numero 5")
     testo = request.args.get("text", "Nuovo numero")
     
     # Cartella temporanea compatibile anche con Railway
     audio_path = "/tmp/annuncio_eliminacode.mp3"
     
-    # Scegli la voce femminile neurale italiana:
-    # Opzione A: "it-IT-ElsaNeural" (Consigliata: calda e fluida)
-    # Opzione B: "it-IT-IsabellaNeural" (Stile annunciatrice)
-    VOCE_FEMMINILE = "it-IT-ElsaNeural"
-    
     try:
-        # Rimuove il vecchio file se presente per evitare conflitti di scrittura
-        if os.path.exists(audio_path):
-            os.remove(audio_path)
-            
-        # Inizializza il motore TTS di Microsoft con la voce neurale scelta
-        communicate = edge_tts.Communicate(testo, VOCE_FEMMINILE)
+        # Genera il file parlato usando la voce italiana di Google
+        tts = gTTS(text=testo, lang="it", slow=False)
+        tts.save(audio_path)
         
-        # Salva l'MP3 in modo asincrono nella cartella temporanea
-        await communicate.save(audio_path)
-        
-        # Invia l'MP3 pronto e cristallino alla Fire Stick
+        # Invia l'MP3 pronto al browser della Fire Stick
         return send_file(audio_path, mimetype="audio/mp3")
-        
     except Exception as e:
-        print(f"Errore generazione voce neurale sul server: {e}")
-        # Se c'è un errore di rete, invia il ding classico come ruota di scorta
+        print(f"Errore generazione voce sul server: {e}")
+        # Se Google fallisce, invia il ding classico come ruota di scorta
         return send_file(os.path.join(app.root_path, "static", "ding.mp3"), mimetype="audio/mp3")
         
         
