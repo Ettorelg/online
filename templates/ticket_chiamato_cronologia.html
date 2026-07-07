@@ -437,16 +437,42 @@ html, body { height: 100%; overflow: hidden; } /* niente scroll della pagina */
         panelBody.classList.toggle("hidden");
     }
 
-    function loadVoices() {
-        var voices = window.speechSynthesis.getVoices();
-        selectedVoice = voices.find(v => v.name.includes("Microsoft Elsa")) ||
-                        voices.find(v => v.name.includes("Google italiano femminile")) ||
-                        voices.find(v => v.name.includes("Alice")) ||
-                        voices.find(v => v.name.toLowerCase().includes("female")) ||
-                        voices.find(v => v.lang === "it-IT");
+    var selectedVoice = null;
 
-        console.log("✅ Voce selezionata:", selectedVoice ? selectedVoice.name : "Nessuna voce trovata");
-    }
+	function loadVoices() {
+	    const voices = window.speechSynthesis.getVoices();
+	
+	    if (!voices || voices.length === 0) {
+	        console.log("⚠️ Nessuna voce disponibile");
+	        return;
+	    }
+	
+	    console.table(voices.map(v => ({
+	        name: v.name,
+	        lang: v.lang,
+	        local: v.localService,
+	        default: v.default
+	    })));
+	
+	    // Preferenze
+	    selectedVoice =
+	        // Italiano locale
+	        voices.find(v => v.lang === "it-IT" && v.localService) ||
+	
+	        // Qualsiasi italiano
+	        voices.find(v => v.lang === "it-IT") ||
+	
+	        // Qualsiasi variante italiana
+	        voices.find(v => v.lang.toLowerCase().startsWith("it")) ||
+	
+	        // Inglese come fallback
+	        voices.find(v => v.lang.startsWith("en")) ||
+	
+	        // Prima disponibile
+	        voices[0];
+	
+	    console.log("✅ Voce selezionata:", selectedVoice.name, selectedVoice.lang);
+	}
 
     function announceNumber(number, reparto) {
         let mode = getAudioPreference();
