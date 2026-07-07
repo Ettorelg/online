@@ -8,3 +8,4 @@ psycopg2-binary==2.9.9
 python-escpos==3.1
 Jinja2==3.1.4
 gTTS==2.5.4
+edge-tts==6.1.12
